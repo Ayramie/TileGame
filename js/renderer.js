@@ -432,6 +432,20 @@ export class Renderer {
     }
 
     drawUI(player) {
+        // Auto-attack cooldown
+        const abilityRMB = document.getElementById('ability-rmb');
+        if (abilityRMB) {
+            const overlay = abilityRMB.querySelector('.cooldown-overlay');
+            if (player.autoAttackCooldown > 0) {
+                abilityRMB.classList.add('on-cooldown');
+                const percent = (player.autoAttackCooldown / player.autoAttackCooldownMax) * 100;
+                overlay.style.height = `${percent}%`;
+            } else {
+                abilityRMB.classList.remove('on-cooldown');
+                overlay.style.height = '0%';
+            }
+        }
+
         // Cleave cooldown
         const abilityQ = document.getElementById('ability-q');
         if (abilityQ) {

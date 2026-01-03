@@ -65,38 +65,31 @@ export class Game {
         };
 
         if (this.player.isAlive) {
-            // Left click to move
+            // Left click to move (clears target)
             if (this.input.consumeLeftClick()) {
+                this.player.clearTarget();
                 this.player.setMoveTarget(mouse.x, mouse.y, this.gameMap, this.enemies);
             }
 
-            // Right click to attack
+            // Right click to attack or target enemy
             if (this.input.consumeRightClick()) {
-                // Check if clicking on an enemy in range for auto-attack
                 const clickTile = isoToCart(mouse.x, mouse.y);
-                let targetEnemy = null;
+                let clickedEnemy = null;
 
+                // Check if clicking on an enemy
                 for (const enemy of this.enemies) {
                     if (enemy.isAlive && enemy.occupiesTile(clickTile.x, clickTile.y)) {
-                        // Check if in attack range (2 tiles)
-                        const dx = (enemy.tileX + enemy.width / 2) - this.player.tileX;
-                        const dy = (enemy.tileY + enemy.height / 2) - this.player.tileY;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist <= 3) {
-                            targetEnemy = enemy;
-                            break;
-                        }
+                        clickedEnemy = enemy;
+                        break;
                     }
                 }
 
-                if (targetEnemy) {
-                    // Auto-attack towards enemy center
-                    const enemyCenter = tileToScreenCenter(
-                        targetEnemy.tileX + targetEnemy.width / 2,
-                        targetEnemy.tileY + targetEnemy.height / 2
-                    );
-                    this.player.attack(enemyCenter.x, enemyCenter.y);
+                if (clickedEnemy) {
+                    // Set as target - player will run to and auto-attack
+                    this.player.setTargetEnemy(clickedEnemy);
                 } else {
+                    // Clear target and attack in direction
+                    this.player.clearTarget();
                     this.player.attack(mouse.x, mouse.y);
                 }
             }

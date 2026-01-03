@@ -5,7 +5,7 @@ const AttackType = {
     SLAM: {
         name: 'Slam',
         damage: 30,
-        telegraphDuration: 1.0,
+        telegraphDuration: 1.3,
         executeDuration: 0.3,
         cooldown: 3.0,
         range: 4
@@ -13,7 +13,7 @@ const AttackType = {
     CHARGE: {
         name: 'Charge',
         damage: 25,
-        telegraphDuration: 0.8,
+        telegraphDuration: 1.0,
         executeDuration: 0.2,
         cooldown: 4.0,
         range: 8
@@ -21,7 +21,7 @@ const AttackType = {
     CROSS: {
         name: 'Cross',
         damage: 35,
-        telegraphDuration: 1.2,
+        telegraphDuration: 1.5,
         executeDuration: 0.4,
         cooldown: 5.0,
         range: 6
@@ -29,7 +29,7 @@ const AttackType = {
     SHOCKWAVE: {
         name: 'Shockwave',
         damage: 20,
-        telegraphDuration: 0.6,
+        telegraphDuration: 0.8,
         executeDuration: 0.2,
         cooldown: 3.5,
         range: 5
@@ -37,7 +37,7 @@ const AttackType = {
     BOUNCE: {
         name: 'Bounce',
         damage: 20,
-        telegraphDuration: 0.5,
+        telegraphDuration: 0.7,
         executeDuration: 0.8,  // Longer to animate 3 bounces
         cooldown: 6.0,
         range: 10

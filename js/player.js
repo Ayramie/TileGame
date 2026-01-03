@@ -9,7 +9,7 @@ export class Player {
         this.y = tileY;
         this.targetTileX = tileX;
         this.targetTileY = tileY;
-        this.speed = 8; // tiles per second
+        this.speed = 5; // tiles per second
         this.health = 100;
         this.maxHealth = 100;
         this.isAlive = true;
@@ -47,6 +47,12 @@ export class Player {
         this.pathIndex = 0;
         this.enemies = []; // Reference for pathfinding
         this.pathfindCooldown = 0; // Prevent pathfinding spam
+
+        // Auto-attack targeting
+        this.targetEnemy = null;
+        this.autoAttackCooldown = 0;
+        this.autoAttackCooldownMax = 3.0;
+        this.autoAttackRange = 2.5;
     }
 
     setMoveTarget(screenX, screenY, gameMap, enemies = null) {
@@ -233,6 +239,9 @@ export class Player {
         if (this.pathfindCooldown > 0) {
             this.pathfindCooldown -= deltaTime;
         }
+        if (this.autoAttackCooldown > 0) {
+            this.autoAttackCooldown -= deltaTime;
+        }
 
         // Update attack timers
         if (this.attackTimer > 0) {
@@ -254,6 +263,39 @@ export class Player {
             this.x = this.tileX;
             this.y = this.tileY;
             return;
+        }
+
+        // Auto-attack targeting logic
+        if (this.targetEnemy && this.targetEnemy.isAlive) {
+            const enemyCenterX = this.targetEnemy.tileX + this.targetEnemy.width / 2;
+            const enemyCenterY = this.targetEnemy.tileY + this.targetEnemy.height / 2;
+            const dx = enemyCenterX - this.tileX;
+            const dy = enemyCenterY - this.tileY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist <= this.autoAttackRange) {
+                // In range - attack if off cooldown
+                if (this.autoAttackCooldown <= 0 && this.attackCooldown <= 0) {
+                    // Face the enemy and attack
+                    const screenPos = tileToScreenCenter(enemyCenterX, enemyCenterY);
+                    this.attack(screenPos.x, screenPos.y);
+                    this.autoAttackCooldown = this.autoAttackCooldownMax;
+                }
+                // Stop moving when in range
+                this.targetTileX = this.tileX;
+                this.targetTileY = this.tileY;
+                this.path = [];
+            } else {
+                // Move towards enemy
+                if (this.gameMapRef) {
+                    this.targetTileX = Math.round(enemyCenterX);
+                    this.targetTileY = Math.round(enemyCenterY);
+                    this.finalDestination = { x: this.targetTileX, y: this.targetTileY };
+                }
+            }
+        } else if (this.targetEnemy && !this.targetEnemy.isAlive) {
+            // Target died, clear it
+            this.targetEnemy = null;
         }
 
         const dx = this.targetTileX - this.x;
@@ -398,6 +440,16 @@ export class Player {
         this.shield = this.maxShield;
         this.shieldCooldown = this.shieldCooldownMax;
         return true;
+    }
+
+    setTargetEnemy(enemy) {
+        this.targetEnemy = enemy;
+        // Clear current path when targeting
+        this.path = [];
+    }
+
+    clearTarget() {
+        this.targetEnemy = null;
     }
 
     takeDamage(amount) {
