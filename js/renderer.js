@@ -394,9 +394,43 @@ export class Renderer {
     }
 
     drawShockwaveTelegraph(player) {
+        const ctx = this.ctx;
+
+        // Draw explosion effect
+        if (player.shockwaveExplosionTimer > 0 && player.shockwaveExplosionTiles.length > 0) {
+            const progress = 1 - (player.shockwaveExplosionTimer / player.shockwaveExplosionDuration);
+            const alpha = 1 - progress;
+            const expandScale = 1 + progress * 0.3;
+
+            for (const tile of player.shockwaveExplosionTiles) {
+                // Bright flash that fades
+                const fillColor = `rgba(150, 220, 255, ${alpha * 0.7})`;
+                const strokeColor = `rgba(255, 255, 255, ${alpha})`;
+                this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+
+                // Extra white flash at start
+                if (progress < 0.3) {
+                    const flashAlpha = (0.3 - progress) / 0.3;
+                    this.drawIsometricTile(tile.x, tile.y, `rgba(255, 255, 255, ${flashAlpha * 0.5})`);
+                }
+
+                // Draw expanding ring particles
+                const pos = tileToScreenCenter(tile.x, tile.y);
+                const ringRadius = 10 + progress * 15;
+
+                ctx.save();
+                ctx.strokeStyle = `rgba(100, 200, 255, ${alpha * 0.6})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y + 10, ringRadius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // Draw charging telegraph
         if (!player.shockwaveCharging && player.shockwaveTiles.length === 0) return;
 
-        const ctx = this.ctx;
         const tiles = player.shockwaveTiles;
         const chargeLevel = player.getShockwaveChargeLevel();
 

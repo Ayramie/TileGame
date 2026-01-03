@@ -66,6 +66,11 @@ export class Player {
         this.shockwaveDirection = { x: 1, y: 0 }; // 4-way direction
         this.shockwaveHitPending = false;
         this.shockwaveTiles = [];
+
+        // Shockwave explosion effect
+        this.shockwaveExplosionTiles = [];
+        this.shockwaveExplosionTimer = 0;
+        this.shockwaveExplosionDuration = 0.4;
     }
 
     setMoveTarget(screenX, screenY, gameMap, enemies = null) {
@@ -257,6 +262,12 @@ export class Player {
         }
         if (this.shockwaveCooldown > 0) {
             this.shockwaveCooldown -= deltaTime;
+        }
+        if (this.shockwaveExplosionTimer > 0) {
+            this.shockwaveExplosionTimer -= deltaTime;
+            if (this.shockwaveExplosionTimer <= 0) {
+                this.shockwaveExplosionTiles = [];
+            }
         }
 
         // Update attack timers
@@ -532,6 +543,11 @@ export class Player {
             this.shockwaveTiles = this.getShockwaveTiles();
             this.shockwaveCooldown = this.shockwaveCooldownMax;
             this.movementLockout = 0.3;
+
+            // Start explosion effect
+            this.shockwaveExplosionTiles = [...this.shockwaveTiles];
+            this.shockwaveExplosionTimer = this.shockwaveExplosionDuration;
+
             return true;
         }
 
