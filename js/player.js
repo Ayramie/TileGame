@@ -58,8 +58,8 @@ export class Player {
         // Shockwave ability
         this.shockwaveCharging = false;
         this.shockwaveChargeTime = 0;
-        this.shockwaveMaxCharge = 4.5; // Time to reach max level (9)
-        this.shockwaveChargePerLevel = 0.5; // Time per charge level
+        this.shockwaveMaxCharge = 3.2; // Time to reach max level (9)
+        this.shockwaveChargePerLevel = 0.35; // Time per charge level
         this.shockwaveCooldown = 0;
         this.shockwaveCooldownMax = 8;
         this.shockwaveDamage = 15; // Base damage, scales with charge
