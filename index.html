@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tile Combat Game</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <div id="controls-hint">
+            <span>LMB: Move</span>
+            <span>RMB: Attack</span>
+        </div>
+        <div id="ability-bar">
+            <div class="ability" id="ability-q">
+                <span class="key">Q</span>
+                <span class="name">Cleave</span>
+                <div class="cooldown-overlay"></div>
+            </div>
+            <div class="ability" id="ability-w">
+                <span class="key">W</span>
+                <span class="name">Shield</span>
+                <div class="cooldown-overlay"></div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

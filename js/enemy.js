@@ -1,0 +1,564 @@
+import { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from './map.js';
+
+// Attack types with their properties
+const AttackType = {
+    SLAM: {
+        name: 'Slam',
+        damage: 30,
+        telegraphDuration: 1.0,
+        executeDuration: 0.3,
+        cooldown: 3.0,
+        range: 4
+    },
+    CHARGE: {
+        name: 'Charge',
+        damage: 25,
+        telegraphDuration: 0.8,
+        executeDuration: 0.2,
+        cooldown: 4.0,
+        range: 8
+    },
+    CROSS: {
+        name: 'Cross',
+        damage: 35,
+        telegraphDuration: 1.2,
+        executeDuration: 0.4,
+        cooldown: 5.0,
+        range: 6
+    },
+    SHOCKWAVE: {
+        name: 'Shockwave',
+        damage: 20,
+        telegraphDuration: 0.6,
+        executeDuration: 0.2,
+        cooldown: 3.5,
+        range: 5
+    },
+    BOUNCE: {
+        name: 'Bounce',
+        damage: 20,
+        telegraphDuration: 0.5,
+        executeDuration: 0.8,  // Longer to animate 3 bounces
+        cooldown: 6.0,
+        range: 10
+    }
+};
+
+export class Enemy {
+    constructor(tileX, tileY) {
+        this.tileX = tileX;
+        this.tileY = tileY;
+        this.width = 2;
+        this.height = 2;
+        // Smooth position (in tile units, like player)
+        this.smoothX = tileX;
+        this.smoothY = tileY;
+        this.x = tileX * TILE_SIZE;
+        this.y = tileY * TILE_SIZE;
+        this.smoothSpeed = 6; // tiles per second for interpolation
+        this.health = 400;
+        this.maxHealth = 400;
+        this.isAlive = true;
+        this.hitFlashTimer = 0;
+        this.hitFlashDuration = 0.15;
+
+        // Movement
+        this.moveSpeed = 2.0; // tiles per second
+        this.moveTimer = 0;
+        this.moveCooldown = 0.35; // time between moves
+
+        // Attack system
+        this.attackCooldowns = {
+            SLAM: 0,
+            CHARGE: 0,
+            CROSS: 0,
+            SHOCKWAVE: 2.0,
+            BOUNCE: 3.0
+        };
+        this.currentAttack = null;
+        this.attackPhase = 'none'; // 'none', 'telegraph', 'execute'
+        this.attackTimer = 0;
+        this.attackTiles = [];
+        this.attackHitPending = false;
+        this.currentAttackDamage = 0;
+        this.targetPlayerTile = { x: 0, y: 0 }; // Stored when attack starts
+
+        // Bounce attack state
+        this.bouncePositions = []; // Array of {x, y} landing positions
+        this.currentBounce = 0;
+        this.bounceProgress = 0; // 0-1 progress through current bounce
+        this.bounceStartPos = { x: 0, y: 0 };
+    }
+
+    update(deltaTime, player, gameMap, groundHazards = null) {
+        if (!this.isAlive) return;
+
+        this.groundHazards = groundHazards; // Store reference for attack effects
+        this.playerRef = player; // Store for bounce landing check
+
+        if (this.hitFlashTimer > 0) {
+            this.hitFlashTimer -= deltaTime;
+        }
+
+        // Update attack cooldowns
+        for (const key in this.attackCooldowns) {
+            if (this.attackCooldowns[key] > 0) {
+                this.attackCooldowns[key] -= deltaTime;
+            }
+        }
+
+        // Handle current attack
+        if (this.attackPhase !== 'none') {
+            this.updateAttack(deltaTime);
+            this.updateSmoothPosition(deltaTime);
+            return; // Don't move while attacking
+        }
+
+        // Try to start an attack
+        if (this.tryStartAttack(player)) {
+            this.updateSmoothPosition(deltaTime);
+            return;
+        }
+
+        // Movement towards player
+        this.updateMovement(deltaTime, player, gameMap);
+        this.updateSmoothPosition(deltaTime);
+    }
+
+    updateSmoothPosition(deltaTime) {
+        // Interpolate smooth position towards tile position
+        const dx = this.tileX - this.smoothX;
+        const dy = this.tileY - this.smoothY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0.05) {
+            const moveAmount = this.smoothSpeed * deltaTime;
+            if (moveAmount >= dist) {
+                this.smoothX = this.tileX;
+                this.smoothY = this.tileY;
+            } else {
+                this.smoothX += (dx / dist) * moveAmount;
+                this.smoothY += (dy / dist) * moveAmount;
+            }
+        } else {
+            this.smoothX = this.tileX;
+            this.smoothY = this.tileY;
+        }
+    }
+
+    updateMovement(deltaTime, player, gameMap) {
+        this.moveTimer -= deltaTime;
+        if (this.moveTimer > 0) return;
+
+        this.moveTimer = this.moveCooldown;
+
+        // Get center of boss and player
+        const bossCenterX = this.tileX + this.width / 2;
+        const bossCenterY = this.tileY + this.height / 2;
+        const dx = player.tileX - bossCenterX;
+        const dy = player.tileY - bossCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Don't move if very close
+        if (distance < 3) return;
+
+        // Move one tile towards player
+        let moveX = 0;
+        let moveY = 0;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            moveX = Math.sign(dx);
+        } else {
+            moveY = Math.sign(dy);
+        }
+
+        const newTileX = this.tileX + moveX;
+        const newTileY = this.tileY + moveY;
+
+        // Check bounds (boss is 2x2)
+        if (newTileX >= 0 && newTileX + this.width <= MAP_WIDTH &&
+            newTileY >= 0 && newTileY + this.height <= MAP_HEIGHT) {
+            this.tileX = newTileX;
+            this.tileY = newTileY;
+            this.x = this.tileX * TILE_SIZE;
+            this.y = this.tileY * TILE_SIZE;
+        }
+    }
+
+    tryStartAttack(player) {
+        const bossCenterX = this.tileX + this.width / 2;
+        const bossCenterY = this.tileY + this.height / 2;
+        const dx = player.tileX - bossCenterX;
+        const dy = player.tileY - bossCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Store player position for attack targeting
+        this.targetPlayerTile = { x: player.tileX, y: player.tileY };
+
+        // Check each attack in priority order
+        const attacks = ['SLAM', 'CROSS', 'CHARGE', 'SHOCKWAVE', 'BOUNCE'];
+
+        for (const attackName of attacks) {
+            const attack = AttackType[attackName];
+            if (this.attackCooldowns[attackName] <= 0 && distance <= attack.range) {
+                this.startAttack(attackName, player);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    startAttack(attackName, player) {
+        const attack = AttackType[attackName];
+        this.currentAttack = attackName;
+        this.attackPhase = 'telegraph';
+        this.attackTimer = attack.telegraphDuration;
+        this.currentAttackDamage = attack.damage;
+        this.attackCooldowns[attackName] = attack.cooldown;
+
+        // Calculate attack tiles based on type
+        this.attackTiles = this.calculateAttackTiles(attackName, player);
+
+        // Initialize bounce state
+        if (attackName === 'BOUNCE') {
+            this.currentBounce = 0;
+            this.bounceProgress = 0;
+            this.bounceStartPos = { x: this.tileX, y: this.tileY };
+        }
+    }
+
+    calculateAttackTiles(attackName, player) {
+        const tiles = [];
+        const centerX = this.tileX + Math.floor(this.width / 2);
+        const centerY = this.tileY + Math.floor(this.height / 2);
+        const px = this.targetPlayerTile.x;
+        const py = this.targetPlayerTile.y;
+
+        switch (attackName) {
+            case 'SLAM':
+                // 3x3 area centered on player's position
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        tiles.push({ x: px + dx, y: py + dy });
+                    }
+                }
+                break;
+
+            case 'CHARGE':
+                // Line from boss to player and beyond
+                const dirX = px - centerX;
+                const dirY = py - centerY;
+                const len = Math.sqrt(dirX * dirX + dirY * dirY);
+                if (len > 0) {
+                    const normX = dirX / len;
+                    const normY = dirY / len;
+                    for (let i = 1; i <= 8; i++) {
+                        tiles.push({
+                            x: centerX + Math.round(normX * i),
+                            y: centerY + Math.round(normY * i)
+                        });
+                    }
+                }
+                break;
+
+            case 'CROSS':
+                // + shape centered on player
+                for (let i = -3; i <= 3; i++) {
+                    if (i !== 0) {
+                        tiles.push({ x: px + i, y: py });
+                        tiles.push({ x: px, y: py + i });
+                    }
+                }
+                tiles.push({ x: px, y: py }); // Center
+                break;
+
+            case 'SHOCKWAVE':
+                // Ring around the boss (2 tiles out)
+                for (let dy = -2; dy <= this.height + 1; dy++) {
+                    for (let dx = -2; dx <= this.width + 1; dx++) {
+                        const tx = this.tileX + dx;
+                        const ty = this.tileY + dy;
+                        // Only tiles on the edge of a 6x6 area
+                        const onEdge = dx === -2 || dx === this.width + 1 ||
+                                       dy === -2 || dy === this.height + 1;
+                        if (onEdge) {
+                            tiles.push({ x: tx, y: ty });
+                        }
+                    }
+                }
+                // Also add one tile further ring
+                for (let dy = -1; dy <= this.height; dy++) {
+                    for (let dx = -1; dx <= this.width; dx++) {
+                        const tx = this.tileX + dx;
+                        const ty = this.tileY + dy;
+                        const onEdge = dx === -1 || dx === this.width ||
+                                       dy === -1 || dy === this.height;
+                        if (onEdge) {
+                            tiles.push({ x: tx, y: ty });
+                        }
+                    }
+                }
+                break;
+
+            case 'BOUNCE': {
+                // Calculate 3 bounce landing positions towards player
+                const bounceDirX = px - centerX;
+                const bounceDirY = py - centerY;
+                const bounceDirLen = Math.sqrt(bounceDirX * bounceDirX + bounceDirY * bounceDirY);
+
+                if (bounceDirLen > 0) {
+                    const bounceNormX = bounceDirX / bounceDirLen;
+                    const bounceNormY = bounceDirY / bounceDirLen;
+                    const bounceDistance = 4; // Distance per bounce
+
+                    this.bouncePositions = [];
+
+                    for (let bounce = 1; bounce <= 3; bounce++) {
+                        let landX = Math.round(centerX + bounceNormX * bounceDistance * bounce) - 1;
+                        let landY = Math.round(centerY + bounceNormY * bounceDistance * bounce) - 1;
+
+                        // Clamp to map bounds (boss is 2x2)
+                        landX = Math.max(0, Math.min(MAP_WIDTH - this.width, landX));
+                        landY = Math.max(0, Math.min(MAP_HEIGHT - this.height, landY));
+
+                        this.bouncePositions.push({ x: landX, y: landY });
+
+                        // Add landing zone tiles (2x2 boss footprint + 1 tile border for impact)
+                        for (let bdy = -1; bdy <= this.height; bdy++) {
+                            for (let bdx = -1; bdx <= this.width; bdx++) {
+                                tiles.push({ x: landX + bdx, y: landY + bdy });
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+
+        }
+
+        // Filter to valid map tiles
+        return tiles.filter(t =>
+            t.x >= 0 && t.x < MAP_WIDTH &&
+            t.y >= 0 && t.y < MAP_HEIGHT
+        );
+    }
+
+    updateAttack(deltaTime) {
+        this.attackTimer -= deltaTime;
+
+        if (this.attackPhase === 'telegraph') {
+            if (this.attackTimer <= 0) {
+                // Transition to execute phase
+                this.attackPhase = 'execute';
+                this.attackTimer = AttackType[this.currentAttack].executeDuration;
+                this.attackHitPending = true; // Signal to deal damage
+
+                // Initialize bounce attack execute phase
+                if (this.currentAttack === 'BOUNCE') {
+                    this.currentBounce = 0;
+                    this.bounceProgress = 0;
+                    this.bounceStartPos = { x: this.tileX, y: this.tileY };
+                }
+            }
+        } else if (this.attackPhase === 'execute') {
+            // Handle BOUNCE animation
+            if (this.currentAttack === 'BOUNCE' && this.bouncePositions.length > 0) {
+                const totalDuration = AttackType.BOUNCE.executeDuration;
+                const bounceDuration = totalDuration / 3; // Time per bounce
+                const elapsed = totalDuration - this.attackTimer;
+
+                const newBounce = Math.min(2, Math.floor(elapsed / bounceDuration));
+
+                // Check if we just landed on a new bounce
+                if (newBounce > this.currentBounce) {
+                    // Landed on a new position - spawn poison
+                    const landPos = this.bouncePositions[this.currentBounce];
+                    if (landPos) {
+                        // Check if player is under the landing spot
+                        if (this.playerRef) {
+                            const playerUnder = this.playerRef.tileX >= landPos.x - 1 &&
+                                               this.playerRef.tileX <= landPos.x + this.width &&
+                                               this.playerRef.tileY >= landPos.y - 1 &&
+                                               this.playerRef.tileY <= landPos.y + this.height;
+
+                            if (playerUnder) {
+                                // Push player out and deal extra damage
+                                this.playerRef.takeDamage(5);
+                                // Push away from boss center
+                                const pushDirX = this.playerRef.tileX - (landPos.x + this.width / 2);
+                                const pushDirY = this.playerRef.tileY - (landPos.y + this.height / 2);
+                                const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
+                                if (pushLen > 0) {
+                                    const pushX = Math.round(pushDirX / pushLen * 2);
+                                    const pushY = Math.round(pushDirY / pushLen * 2);
+                                    const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
+                                    const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
+                                    this.playerRef.tileX = newX;
+                                    this.playerRef.tileY = newY;
+                                    this.playerRef.x = newX;
+                                    this.playerRef.y = newY;
+                                    this.playerRef.targetTileX = newX;
+                                    this.playerRef.targetTileY = newY;
+                                }
+                            }
+                        }
+
+                        if (this.groundHazards) {
+                            // Create poison pool at landing spot
+                            const poisonTiles = [];
+                            for (let dy = -1; dy <= this.height; dy++) {
+                                for (let dx = -1; dx <= this.width; dx++) {
+                                    poisonTiles.push({ x: landPos.x + dx, y: landPos.y + dy });
+                                }
+                            }
+                            this.groundHazards.addHazardsFromTiles(poisonTiles, 'poison', 5.0, 6);
+                        }
+                    }
+
+                    // Update start position for next bounce
+                    this.bounceStartPos = landPos;
+                    this.currentBounce = newBounce;
+                }
+
+                // Calculate current position during bounce
+                const bounceElapsed = elapsed - (this.currentBounce * bounceDuration);
+                this.bounceProgress = Math.min(1, bounceElapsed / bounceDuration);
+
+                // Interpolate position
+                const targetPos = this.bouncePositions[this.currentBounce];
+                if (targetPos) {
+                    this.tileX = Math.round(this.bounceStartPos.x + (targetPos.x - this.bounceStartPos.x) * this.bounceProgress);
+                    this.tileY = Math.round(this.bounceStartPos.y + (targetPos.y - this.bounceStartPos.y) * this.bounceProgress);
+                    this.x = this.tileX * TILE_SIZE;
+                    this.y = this.tileY * TILE_SIZE;
+                }
+            }
+
+            if (this.attackTimer <= 0) {
+                // Attack finished - spawn ground hazards for certain attacks
+                if (this.currentAttack === 'SLAM' && this.groundHazards) {
+                    // SLAM leaves fire on the ground
+                    this.groundHazards.addHazardsFromTiles(
+                        this.attackTiles,
+                        'fire',
+                        4.0,  // Duration: 4 seconds
+                        8     // Damage per tick
+                    );
+                }
+
+                // Final bounce landing poison and push
+                if (this.currentAttack === 'BOUNCE' && this.bouncePositions.length > 0) {
+                    const finalPos = this.bouncePositions[2];
+                    if (finalPos) {
+                        // Check if player is under final landing spot
+                        if (this.playerRef) {
+                            const playerUnder = this.playerRef.tileX >= finalPos.x - 1 &&
+                                               this.playerRef.tileX <= finalPos.x + this.width &&
+                                               this.playerRef.tileY >= finalPos.y - 1 &&
+                                               this.playerRef.tileY <= finalPos.y + this.height;
+
+                            if (playerUnder) {
+                                this.playerRef.takeDamage(5);
+                                const pushDirX = this.playerRef.tileX - (finalPos.x + this.width / 2);
+                                const pushDirY = this.playerRef.tileY - (finalPos.y + this.height / 2);
+                                const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
+                                if (pushLen > 0) {
+                                    const pushX = Math.round(pushDirX / pushLen * 2);
+                                    const pushY = Math.round(pushDirY / pushLen * 2);
+                                    const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
+                                    const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
+                                    this.playerRef.tileX = newX;
+                                    this.playerRef.tileY = newY;
+                                    this.playerRef.x = newX;
+                                    this.playerRef.y = newY;
+                                    this.playerRef.targetTileX = newX;
+                                    this.playerRef.targetTileY = newY;
+                                }
+                            }
+                        }
+
+                        if (this.groundHazards) {
+                            const poisonTiles = [];
+                            for (let dy = -1; dy <= this.height; dy++) {
+                                for (let dx = -1; dx <= this.width; dx++) {
+                                    poisonTiles.push({ x: finalPos.x + dx, y: finalPos.y + dy });
+                                }
+                            }
+                            this.groundHazards.addHazardsFromTiles(poisonTiles, 'poison', 5.0, 6);
+                        }
+                    }
+                }
+
+                this.attackPhase = 'none';
+                this.currentAttack = null;
+                this.attackTiles = [];
+                this.bouncePositions = [];
+            }
+        }
+    }
+
+    getCurrentAttackTiles() {
+        return this.attackTiles;
+    }
+
+    getTelegraphInfo() {
+        if (this.attackPhase === 'none') return null;
+
+        const attack = AttackType[this.currentAttack];
+        let progress = 0;
+
+        if (this.attackPhase === 'telegraph') {
+            progress = 1 - (this.attackTimer / attack.telegraphDuration);
+        } else {
+            progress = 1;
+        }
+
+        return {
+            tiles: this.attackTiles,
+            phase: this.attackPhase,
+            progress: progress,
+            attackName: this.currentAttack,
+            bouncePositions: this.bouncePositions
+        };
+    }
+
+    getBounceInfo() {
+        if (this.currentAttack !== 'BOUNCE' || this.attackPhase !== 'execute') {
+            return null;
+        }
+
+        return {
+            progress: this.bounceProgress,
+            currentBounce: this.currentBounce,
+            positions: this.bouncePositions
+        };
+    }
+
+    takeDamage(amount) {
+        if (!this.isAlive) return;
+        this.health -= amount;
+        this.hitFlashTimer = this.hitFlashDuration;
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isAlive = false;
+        }
+    }
+
+    occupiesTile(tx, ty) {
+        return tx >= this.tileX &&
+               tx < this.tileX + this.width &&
+               ty >= this.tileY &&
+               ty < this.tileY + this.height;
+    }
+
+    getOccupiedTiles() {
+        const tiles = [];
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                tiles.push({ x: this.tileX + x, y: this.tileY + y });
+            }
+        }
+        return tiles;
+    }
+}
