@@ -9,7 +9,7 @@ export class InputHandler {
         this.keyJustPressed = {};
 
         // Zoom
-        this.zoom = 1.4;
+        this.zoom = 1.8;
         this.minZoom = 0.5;
         this.maxZoom = 2.5;
         this.zoomSpeed = 0.1;

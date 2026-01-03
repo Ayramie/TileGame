@@ -57,7 +57,7 @@ export class Renderer {
         }
     }
 
-    drawPlayer(player) {
+    drawPlayer(player, targetEnemy = null) {
         if (!player.isAlive) return;
 
         const ctx = this.ctx;
@@ -66,6 +66,23 @@ export class Renderer {
         const pos = tileToScreenCenter(player.x, player.y);
         const screenX = pos.x;
         const screenY = pos.y - 10; // Lift up to stand on tile
+
+        // Draw target indicator line if player has a target
+        if (targetEnemy && targetEnemy.isAlive) {
+            const enemyPos = tileToScreenCenter(targetEnemy.smoothX + 0.5, targetEnemy.smoothY + 0.5);
+            const targetPulse = Math.sin(this.time * 6) * 0.3 + 0.5;
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(255, 80, 80, ${targetPulse})`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            ctx.moveTo(screenX, screenY);
+            ctx.lineTo(enemyPos.x, enemyPos.y - 20);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
 
         ctx.save();
 

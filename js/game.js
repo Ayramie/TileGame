@@ -74,11 +74,14 @@ export class Game {
             // Right click to attack or target enemy
             if (this.input.consumeRightClick()) {
                 const clickTile = isoToCart(mouse.x, mouse.y);
+                // Round to integer tile coordinates for proper matching
+                const tileX = Math.floor(clickTile.x);
+                const tileY = Math.floor(clickTile.y);
                 let clickedEnemy = null;
 
                 // Check if clicking on an enemy
                 for (const enemy of this.enemies) {
-                    if (enemy.isAlive && enemy.occupiesTile(clickTile.x, clickTile.y)) {
+                    if (enemy.isAlive && enemy.occupiesTile(tileX, tileY)) {
                         clickedEnemy = enemy;
                         break;
                     }
@@ -185,7 +188,7 @@ export class Game {
         // Draw entities in depth order
         for (const entity of entities) {
             if (entity.type === 'player') {
-                this.renderer.drawPlayer(entity.obj);
+                this.renderer.drawPlayer(entity.obj, this.player.targetEnemy);
             } else if (entity.type === 'enemy') {
                 const isTargeted = this.player.targetEnemy === entity.obj;
                 this.renderer.drawEnemy(entity.obj, isTargeted);
