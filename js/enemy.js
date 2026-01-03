@@ -248,8 +248,10 @@ export class Enemy {
         // Store player position for attack targeting
         this.targetPlayerTile = { x: player.tileX, y: player.tileY };
 
-        // Check each attack in priority order
-        const attacks = ['SLAM', 'CROSS', 'CHARGE', 'SHOCKWAVE', 'BOUNCE'];
+        // Check each attack in priority order (BOUNCE only in phase 2)
+        const attacks = this.phase === 1
+            ? ['SLAM', 'CROSS', 'CHARGE', 'SHOCKWAVE']
+            : ['SLAM', 'CROSS', 'CHARGE', 'SHOCKWAVE', 'BOUNCE'];
 
         for (const attackName of attacks) {
             const attack = AttackType[attackName];
