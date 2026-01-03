@@ -91,6 +91,24 @@ export class CombatSystem {
         }
     }
 
+    processAddAttacks(adds, player) {
+        for (const add of adds) {
+            if (!add.isAlive || !add.attackHitPending) continue;
+
+            add.attackHitPending = false;
+            const attackTiles = add.getCurrentAttackTiles();
+
+            for (const tile of attackTiles) {
+                if (tile.x === player.tileX && tile.y === player.tileY) {
+                    player.takeDamage(add.attackDamage);
+                    const screenPos = tileToScreenCenter(player.tileX, player.tileY);
+                    this.addDamageNumber(screenPos.x, screenPos.y - 20, add.attackDamage);
+                    break;
+                }
+            }
+        }
+    }
+
     addDamageNumber(x, y, amount) {
         this.damageNumbers.push({
             x: x + (Math.random() - 0.5) * 20,

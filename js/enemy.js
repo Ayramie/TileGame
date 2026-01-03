@@ -56,9 +56,15 @@ export class Enemy {
         this.x = tileX * TILE_SIZE;
         this.y = tileY * TILE_SIZE;
         this.smoothSpeed = 6; // tiles per second for interpolation
-        this.health = 400;
-        this.maxHealth = 400;
+        this.health = 800;
+        this.maxHealth = 800;
         this.isAlive = true;
+
+        // Phase transition
+        this.phase = 1;
+        this.phaseTransitioning = false;
+        this.phaseTransitionTimer = 0;
+        this.spawnedAdds = false;
         this.hitFlashTimer = 0;
         this.hitFlashDuration = 0.15;
 
@@ -95,9 +101,22 @@ export class Enemy {
 
         this.groundHazards = groundHazards; // Store reference for attack effects
         this.playerRef = player; // Store for bounce landing check
+        this.gameMapRef = gameMap; // Store for phase transition
 
         if (this.hitFlashTimer > 0) {
             this.hitFlashTimer -= deltaTime;
+        }
+
+        // Check for phase transition at 50% health
+        if (this.phase === 1 && this.health <= this.maxHealth * 0.5 && !this.phaseTransitioning) {
+            this.startPhaseTransition();
+        }
+
+        // Handle phase transition
+        if (this.phaseTransitioning) {
+            this.updatePhaseTransition(deltaTime);
+            this.updateSmoothPosition(deltaTime);
+            return;
         }
 
         // Update attack cooldowns
@@ -123,6 +142,40 @@ export class Enemy {
         // Movement towards player
         this.updateMovement(deltaTime, player, gameMap);
         this.updateSmoothPosition(deltaTime);
+    }
+
+    startPhaseTransition() {
+        this.phaseTransitioning = true;
+        this.phaseTransitionTimer = 2.0; // 2 second transition
+        this.attackPhase = 'none';
+        this.currentAttack = null;
+        this.attackTiles = [];
+
+        // Move to center of map
+        const centerX = Math.floor(MAP_WIDTH / 2) - 1;
+        const centerY = Math.floor(MAP_HEIGHT / 2) - 1;
+        this.tileX = centerX;
+        this.tileY = centerY;
+        this.x = this.tileX * TILE_SIZE;
+        this.y = this.tileY * TILE_SIZE;
+    }
+
+    updatePhaseTransition(deltaTime) {
+        this.phaseTransitionTimer -= deltaTime;
+
+        if (this.phaseTransitionTimer <= 0) {
+            this.phaseTransitioning = false;
+            this.phase = 2;
+        }
+    }
+
+    shouldSpawnAdds() {
+        if (this.spawnedAdds) return false;
+        if (this.phaseTransitioning && this.phaseTransitionTimer <= 1.5) {
+            this.spawnedAdds = true;
+            return true;
+        }
+        return false;
     }
 
     updateSmoothPosition(deltaTime) {
@@ -560,5 +613,175 @@ export class Enemy {
             }
         }
         return tiles;
+    }
+}
+
+// Small add enemy that follows and melees
+export class Add {
+    constructor(tileX, tileY) {
+        this.tileX = tileX;
+        this.tileY = tileY;
+        this.width = 1;
+        this.height = 1;
+        this.smoothX = tileX;
+        this.smoothY = tileY;
+        this.smoothSpeed = 8;
+        this.health = 40;
+        this.maxHealth = 40;
+        this.isAlive = true;
+        this.hitFlashTimer = 0;
+        this.hitFlashDuration = 0.1;
+
+        // Movement
+        this.moveSpeed = 3.5;
+        this.moveTimer = 0;
+        this.moveCooldown = 0.25;
+
+        // Attack
+        this.attackCooldown = 0;
+        this.attackCooldownMax = 1.5;
+        this.attackDamage = 8;
+        this.attackPhase = 'none';
+        this.attackTimer = 0;
+        this.telegraphDuration = 0.5;
+        this.executeDuration = 0.2;
+        this.attackTile = null;
+        this.attackHitPending = false;
+    }
+
+    update(deltaTime, player, gameMap) {
+        if (!this.isAlive) return;
+
+        if (this.hitFlashTimer > 0) {
+            this.hitFlashTimer -= deltaTime;
+        }
+        if (this.attackCooldown > 0) {
+            this.attackCooldown -= deltaTime;
+        }
+
+        // Handle current attack
+        if (this.attackPhase !== 'none') {
+            this.updateAttack(deltaTime);
+            this.updateSmoothPosition(deltaTime);
+            return;
+        }
+
+        // Check if in melee range to attack
+        const dx = player.tileX - this.tileX;
+        const dy = player.tileY - this.tileY;
+        const dist = Math.abs(dx) + Math.abs(dy);
+
+        if (dist <= 1 && this.attackCooldown <= 0) {
+            this.startAttack(player);
+            this.updateSmoothPosition(deltaTime);
+            return;
+        }
+
+        // Movement towards player
+        this.updateMovement(deltaTime, player, gameMap);
+        this.updateSmoothPosition(deltaTime);
+    }
+
+    updateSmoothPosition(deltaTime) {
+        const dx = this.tileX - this.smoothX;
+        const dy = this.tileY - this.smoothY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0.05) {
+            const moveAmount = this.smoothSpeed * deltaTime;
+            if (moveAmount >= dist) {
+                this.smoothX = this.tileX;
+                this.smoothY = this.tileY;
+            } else {
+                this.smoothX += (dx / dist) * moveAmount;
+                this.smoothY += (dy / dist) * moveAmount;
+            }
+        } else {
+            this.smoothX = this.tileX;
+            this.smoothY = this.tileY;
+        }
+    }
+
+    updateMovement(deltaTime, player, gameMap) {
+        this.moveTimer -= deltaTime;
+        if (this.moveTimer > 0) return;
+
+        this.moveTimer = this.moveCooldown;
+
+        const dx = player.tileX - this.tileX;
+        const dy = player.tileY - this.tileY;
+
+        // Move one tile towards player
+        let moveX = 0;
+        let moveY = 0;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            moveX = Math.sign(dx);
+        } else if (dy !== 0) {
+            moveY = Math.sign(dy);
+        }
+
+        const newTileX = this.tileX + moveX;
+        const newTileY = this.tileY + moveY;
+
+        if (newTileX >= 0 && newTileX < MAP_WIDTH &&
+            newTileY >= 0 && newTileY < MAP_HEIGHT &&
+            gameMap.isWalkable(newTileX, newTileY)) {
+            this.tileX = newTileX;
+            this.tileY = newTileY;
+        }
+    }
+
+    startAttack(player) {
+        this.attackPhase = 'telegraph';
+        this.attackTimer = this.telegraphDuration;
+        this.attackTile = { x: player.tileX, y: player.tileY };
+        this.attackCooldown = this.attackCooldownMax;
+    }
+
+    updateAttack(deltaTime) {
+        this.attackTimer -= deltaTime;
+
+        if (this.attackPhase === 'telegraph') {
+            if (this.attackTimer <= 0) {
+                this.attackPhase = 'execute';
+                this.attackTimer = this.executeDuration;
+                this.attackHitPending = true;
+            }
+        } else if (this.attackPhase === 'execute') {
+            if (this.attackTimer <= 0) {
+                this.attackPhase = 'none';
+                this.attackTile = null;
+            }
+        }
+    }
+
+    getTelegraphInfo() {
+        if (this.attackPhase === 'none' || !this.attackTile) return null;
+
+        return {
+            tiles: [this.attackTile],
+            phase: this.attackPhase,
+            progress: this.attackPhase === 'telegraph' ?
+                1 - (this.attackTimer / this.telegraphDuration) : 1
+        };
+    }
+
+    getCurrentAttackTiles() {
+        return this.attackTile ? [this.attackTile] : [];
+    }
+
+    takeDamage(amount) {
+        if (!this.isAlive) return;
+        this.health -= amount;
+        this.hitFlashTimer = this.hitFlashDuration;
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isAlive = false;
+        }
+    }
+
+    occupiesTile(tx, ty) {
+        return tx === this.tileX && ty === this.tileY;
     }
 }

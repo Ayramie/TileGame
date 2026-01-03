@@ -1,6 +1,6 @@
 import { GameMap, getCanvasSize, tileToScreenCenter, isoToCart } from './map.js';
 import { Player } from './player.js';
-import { Enemy } from './enemy.js';
+import { Enemy, Add } from './enemy.js';
 import { InputHandler } from './input.js';
 import { CombatSystem } from './combat.js';
 import { Renderer } from './renderer.js';
@@ -21,6 +21,7 @@ export class Game {
         this.enemies = [
             new Enemy(15, 12) // Elemental boss
         ];
+        this.adds = []; // Spawned minions
         this.input = new InputHandler(canvas);
         this.combat = new CombatSystem();
         this.renderer = new Renderer(canvas, this.ctx);
@@ -79,11 +80,21 @@ export class Game {
                 const tileY = Math.floor(clickTile.y);
                 let clickedEnemy = null;
 
-                // Check if clicking on an enemy
+                // Check if clicking on an enemy (boss)
                 for (const enemy of this.enemies) {
                     if (enemy.isAlive && enemy.occupiesTile(tileX, tileY)) {
                         clickedEnemy = enemy;
                         break;
+                    }
+                }
+
+                // Check if clicking on an add
+                if (!clickedEnemy) {
+                    for (const add of this.adds) {
+                        if (add.isAlive && add.occupiesTile(tileX, tileY)) {
+                            clickedEnemy = add;
+                            break;
+                        }
                     }
                 }
 
@@ -135,13 +146,25 @@ export class Game {
 
         for (const enemy of this.enemies) {
             enemy.update(deltaTime, this.player, this.gameMap, this.groundHazards);
+
+            // Check if boss should spawn adds
+            if (enemy.shouldSpawnAdds()) {
+                this.spawnAdds(enemy);
+            }
         }
 
-        // Process combat
-        this.combat.processAttack(this.player, this.enemies);
-        this.combat.processCleave(this.player, this.enemies);
-        this.combat.processShockwave(this.player, this.enemies);
+        // Update adds
+        for (const add of this.adds) {
+            add.update(deltaTime, this.player, this.gameMap);
+        }
+
+        // Process combat (include adds as enemies)
+        const allEnemies = [...this.enemies, ...this.adds];
+        this.combat.processAttack(this.player, allEnemies);
+        this.combat.processCleave(this.player, allEnemies);
+        this.combat.processShockwave(this.player, allEnemies);
         this.combat.processEnemyAttacks(this.enemies, this.player);
+        this.combat.processAddAttacks(this.adds, this.player);
         this.combat.update(deltaTime);
 
         // Update environmental hazards
@@ -188,10 +211,16 @@ export class Game {
             this.renderer.drawEnemyTelegraph(enemy);
         }
 
+        // Draw add telegraphs
+        for (const add of this.adds) {
+            this.renderer.drawAddTelegraph(add);
+        }
+
         // Collect all entities for depth sorting (use smooth positions)
         const entities = [
             { type: 'player', obj: this.player, depth: this.player.x + this.player.y },
-            ...this.enemies.map(e => ({ type: 'enemy', obj: e, depth: e.tileX + e.tileY + 1 }))
+            ...this.enemies.map(e => ({ type: 'enemy', obj: e, depth: e.tileX + e.tileY + 1 })),
+            ...this.adds.map(a => ({ type: 'add', obj: a, depth: a.tileX + a.tileY }))
         ];
 
         // Sort by depth (back to front)
@@ -204,6 +233,9 @@ export class Game {
             } else if (entity.type === 'enemy') {
                 const isTargeted = this.player.targetEnemy === entity.obj;
                 this.renderer.drawEnemy(entity.obj, isTargeted);
+            } else if (entity.type === 'add') {
+                const isTargeted = this.player.targetEnemy === entity.obj;
+                this.renderer.drawAdd(entity.obj, isTargeted);
             }
         }
 
@@ -225,5 +257,24 @@ export class Game {
         }
 
         this.ctx.restore();
+    }
+
+    spawnAdds(boss) {
+        // Spawn 4 adds in cardinal directions from boss
+        const centerX = boss.tileX + 1;
+        const centerY = boss.tileY + 1;
+        const spawnDistance = 4;
+
+        const spawnPositions = [
+            { x: centerX - spawnDistance, y: centerY },
+            { x: centerX + spawnDistance, y: centerY },
+            { x: centerX, y: centerY - spawnDistance },
+            { x: centerX, y: centerY + spawnDistance }
+        ];
+
+        for (const pos of spawnPositions) {
+            const add = new Add(pos.x, pos.y);
+            this.adds.push(add);
+        }
     }
 }

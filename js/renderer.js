@@ -150,6 +150,90 @@ export class Renderer {
         this.drawElementalBoss(enemy, isTargeted);
     }
 
+    drawAdd(add, isTargeted = false) {
+        if (!add.isAlive) return;
+
+        const ctx = this.ctx;
+        const pos = tileToScreenCenter(add.smoothX, add.smoothY);
+        const screenX = pos.x;
+        const screenY = pos.y - 8;
+
+        ctx.save();
+
+        // Target indicator
+        if (isTargeted) {
+            const targetPulse = Math.sin(this.time * 4) * 0.3 + 0.7;
+            ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(screenX, pos.y + 2, 12, 5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(screenX, pos.y + 2, 8, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body - small slime creature
+        const hitFlash = add.hitFlashTimer > 0;
+        const bodyColor = hitFlash ? '#ff6666' : '#55aa55';
+        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 10);
+        gradient.addColorStop(0, hitFlash ? '#ff8888' : '#77cc77');
+        gradient.addColorStop(0.7, bodyColor);
+        gradient.addColorStop(1, hitFlash ? '#cc4444' : '#338833');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(screenX, screenY, 8, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(screenX - 3, screenY - 2, 2, 0, Math.PI * 2);
+        ctx.arc(screenX + 3, screenY - 2, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(screenX - 3, screenY - 2, 1, 0, Math.PI * 2);
+        ctx.arc(screenX + 3, screenY - 2, 1, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // Health bar
+        this.drawHealthBar(screenX - 10, screenY - 18, 20, 3, add.health, add.maxHealth, '#55aa55');
+    }
+
+    drawAddTelegraph(add) {
+        const info = add.getTelegraphInfo();
+        if (!info) return;
+
+        const { tiles, phase, progress } = info;
+
+        let alpha;
+        if (phase === 'telegraph') {
+            const pulseSpeed = 4 + progress * 8;
+            const pulse = (Math.sin(this.time * pulseSpeed) + 1) / 2;
+            alpha = 0.2 + pulse * 0.3 + progress * 0.3;
+        } else {
+            alpha = 0.9;
+        }
+
+        for (const tile of tiles) {
+            const fillColor = `rgba(100, 200, 100, ${alpha * 0.5})`;
+            const strokeColor = `rgba(150, 255, 150, ${alpha})`;
+            this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+
+            if (phase === 'execute') {
+                this.drawIsometricTile(tile.x, tile.y, 'rgba(255, 255, 255, 0.3)');
+            }
+        }
+    }
+
     drawElementalBoss(enemy, isTargeted = false) {
         const ctx = this.ctx;
 
