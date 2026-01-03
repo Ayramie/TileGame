@@ -171,15 +171,13 @@ export class Game {
         const bossInPhase2 = this.enemies.some(e => e.phase === 2);
         if (bossInPhase2) {
             this.laserSystem.update(deltaTime, this.player, (tileX, tileY, damage) => {
-                const pos = tileToScreenCenter(tileX, tileY);
-                this.combat.addDamageNumber(pos.x, pos.y - 20, damage);
+                this.combat.addPlayerDamageNumber(damage);
             });
         }
 
         // Update ground hazards (fire pools, etc.)
         this.groundHazards.update(deltaTime, this.player, (tileX, tileY, damage) => {
-            const pos = tileToScreenCenter(tileX, tileY);
-            this.combat.addDamageNumber(pos.x, pos.y - 20, damage);
+            this.combat.addPlayerDamageNumber(damage);
         });
     }
 
@@ -260,6 +258,9 @@ export class Game {
         }
 
         this.ctx.restore();
+
+        // Draw player health bar (outside zoom transform, fixed on screen)
+        this.renderer.drawPlayerHealthBar(this.player, this.combat.playerDamageNumbers);
     }
 
     spawnAdds(boss) {

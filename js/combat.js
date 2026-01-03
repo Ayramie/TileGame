@@ -3,6 +3,7 @@ import { tileToScreenCenter } from './map.js';
 export class CombatSystem {
     constructor() {
         this.damageNumbers = [];
+        this.playerDamageNumbers = [];
     }
 
     processAttack(player, enemies) {
@@ -83,8 +84,7 @@ export class CombatSystem {
             for (const tile of attackTiles) {
                 if (tile.x === player.tileX && tile.y === player.tileY) {
                     player.takeDamage(enemy.currentAttackDamage);
-                    const screenPos = tileToScreenCenter(player.tileX, player.tileY);
-                    this.addDamageNumber(screenPos.x, screenPos.y - 20, enemy.currentAttackDamage);
+                    this.addPlayerDamageNumber(enemy.currentAttackDamage);
                     break;
                 }
             }
@@ -101,8 +101,7 @@ export class CombatSystem {
             for (const tile of attackTiles) {
                 if (tile.x === player.tileX && tile.y === player.tileY) {
                     player.takeDamage(add.attackDamage);
-                    const screenPos = tileToScreenCenter(player.tileX, player.tileY);
-                    this.addDamageNumber(screenPos.x, screenPos.y - 20, add.attackDamage);
+                    this.addPlayerDamageNumber(add.attackDamage);
                     break;
                 }
             }
@@ -119,6 +118,16 @@ export class CombatSystem {
         });
     }
 
+    addPlayerDamageNumber(amount) {
+        this.playerDamageNumbers.push({
+            offsetX: (Math.random() - 0.5) * 60,
+            y: 0,
+            amount: amount,
+            timer: 1.5,
+            velocityY: -40
+        });
+    }
+
     update(deltaTime) {
         for (let i = this.damageNumbers.length - 1; i >= 0; i--) {
             const dn = this.damageNumbers[i];
@@ -127,6 +136,16 @@ export class CombatSystem {
 
             if (dn.timer <= 0) {
                 this.damageNumbers.splice(i, 1);
+            }
+        }
+
+        for (let i = this.playerDamageNumbers.length - 1; i >= 0; i--) {
+            const dn = this.playerDamageNumbers[i];
+            dn.timer -= deltaTime;
+            dn.y += dn.velocityY * deltaTime;
+
+            if (dn.timer <= 0) {
+                this.playerDamageNumbers.splice(i, 1);
             }
         }
     }

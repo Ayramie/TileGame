@@ -122,14 +122,6 @@ export class Renderer {
 
         ctx.restore();
 
-        // Health bar
-        this.drawHealthBar(screenX - 15, screenY - 30, 30, 4, player.health, player.maxHealth, '#4a90d9');
-
-        // Shield bar (if active)
-        if (player.shield > 0) {
-            this.drawHealthBar(screenX - 15, screenY - 24, 30, 3, player.shield, player.maxShield, '#66ccff');
-        }
-
         // Shield visual effect
         if (player.shield > 0) {
             ctx.save();
@@ -623,6 +615,58 @@ export class Renderer {
             ctx.textAlign = 'center';
             ctx.strokeText(`-${dn.amount}`, dn.x, dn.y);
             ctx.fillText(`-${dn.amount}`, dn.x, dn.y);
+        }
+    }
+
+    drawPlayerHealthBar(player, playerDamageNumbers) {
+        const ctx = this.ctx;
+        const centerX = this.canvas.width / 2;
+        const bottomY = this.canvas.height - 80;
+
+        // Health bar background
+        const barWidth = 200;
+        const barHeight = 20;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(centerX - barWidth / 2 - 2, bottomY - 2, barWidth + 4, barHeight + 4);
+
+        // Health fill
+        const healthPercent = Math.max(0, player.health / player.maxHealth);
+        const gradient = ctx.createLinearGradient(centerX - barWidth / 2, 0, centerX + barWidth / 2, 0);
+        gradient.addColorStop(0, '#cc3333');
+        gradient.addColorStop(0.5, '#ff4444');
+        gradient.addColorStop(1, '#cc3333');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(centerX - barWidth / 2, bottomY, barWidth * healthPercent, barHeight);
+
+        // Shield bar (if active)
+        if (player.shield > 0) {
+            const shieldPercent = player.shield / player.maxShield;
+            ctx.fillStyle = '#66ccff';
+            ctx.fillRect(centerX - barWidth / 2, bottomY + barHeight + 2, barWidth * shieldPercent, 6);
+        }
+
+        // Border
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(centerX - barWidth / 2, bottomY, barWidth, barHeight);
+
+        // Health text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${player.health} / ${player.maxHealth}`, centerX, bottomY + 15);
+
+        // Draw player damage numbers above health bar
+        for (const dn of playerDamageNumbers) {
+            const alpha = dn.timer;
+            ctx.fillStyle = `rgba(255, 80, 80, ${alpha})`;
+            ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
+            ctx.lineWidth = 3;
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.strokeText(`-${dn.amount}`, centerX + dn.offsetX, bottomY - 20 + dn.y);
+            ctx.fillText(`-${dn.amount}`, centerX + dn.offsetX, bottomY - 20 + dn.y);
         }
     }
 
