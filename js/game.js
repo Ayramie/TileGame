@@ -187,7 +187,8 @@ export class Game {
             if (entity.type === 'player') {
                 this.renderer.drawPlayer(entity.obj);
             } else if (entity.type === 'enemy') {
-                this.renderer.drawEnemy(entity.obj);
+                const isTargeted = this.player.targetEnemy === entity.obj;
+                this.renderer.drawEnemy(entity.obj, isTargeted);
             }
         }
 

@@ -128,12 +128,12 @@ export class Renderer {
         }
     }
 
-    drawEnemy(enemy) {
+    drawEnemy(enemy, isTargeted = false) {
         if (!enemy.isAlive) return;
-        this.drawElementalBoss(enemy);
+        this.drawElementalBoss(enemy, isTargeted);
     }
 
-    drawElementalBoss(enemy) {
+    drawElementalBoss(enemy, isTargeted = false) {
         const ctx = this.ctx;
 
         // Boss center position (use smooth position for interpolation)
@@ -167,6 +167,23 @@ export class Renderer {
         ctx.beginPath();
         ctx.ellipse(0, 30 - floatOffset, 30, 12, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        // Target highlight (red circle when targeted)
+        if (isTargeted) {
+            const targetPulse = Math.sin(this.time * 4) * 0.3 + 0.7;
+            ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(0, 30 - floatOffset, 35, 14, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner red glow
+            ctx.strokeStyle = `rgba(255, 100, 100, ${targetPulse * 0.5})`;
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.ellipse(0, 30 - floatOffset, 35, 14, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
 
         // Outer glow/aura
         const glowSize = 50 * attackIntensity;
