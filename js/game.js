@@ -106,6 +106,17 @@ export class Game {
                 this.player.activateShield();
             }
 
+            // E for shockwave (hold to charge, release to fire)
+            if (this.input.wasKeyJustPressed('e')) {
+                this.player.startShockwaveCharge(mouse.x, mouse.y);
+            }
+            if (this.input.isKeyPressed('e') && this.player.shockwaveCharging) {
+                this.player.updateShockwaveCharge(deltaTime, mouse.x, mouse.y);
+            }
+            if (this.input.wasKeyJustReleased('e') && this.player.shockwaveCharging) {
+                this.player.releaseShockwave();
+            }
+
             // Update player
             this.player.update(deltaTime, this.gameMap, this.enemies);
 
@@ -129,6 +140,7 @@ export class Game {
         // Process combat
         this.combat.processAttack(this.player, this.enemies);
         this.combat.processCleave(this.player, this.enemies);
+        this.combat.processShockwave(this.player, this.enemies);
         this.combat.processEnemyAttacks(this.enemies, this.player);
         this.combat.update(deltaTime);
 
@@ -194,6 +206,9 @@ export class Game {
                 this.renderer.drawEnemy(entity.obj, isTargeted);
             }
         }
+
+        // Draw shockwave telegraph (while charging)
+        this.renderer.drawShockwaveTelegraph(this.player);
 
         // Draw attack effects (on top)
         this.renderer.drawAttackEffect(this.player);

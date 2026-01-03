@@ -7,6 +7,7 @@ export class InputHandler {
         this.rightClick = false;
         this.keys = {};
         this.keyJustPressed = {};
+        this.keyJustReleased = {};
 
         // Zoom
         this.zoom = 1.8;
@@ -59,6 +60,9 @@ export class InputHandler {
 
         window.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase();
+            if (this.keys[key]) {
+                this.keyJustReleased[key] = true;
+            }
             this.keys[key] = false;
         });
     }
@@ -70,6 +74,11 @@ export class InputHandler {
     wasKeyJustPressed(key) {
         const pressed = this.keyJustPressed[key.toLowerCase()] || false;
         return pressed;
+    }
+
+    wasKeyJustReleased(key) {
+        const released = this.keyJustReleased[key.toLowerCase()] || false;
+        return released;
     }
 
     consumeLeftClick() {
@@ -86,6 +95,7 @@ export class InputHandler {
 
     clearJustPressed() {
         this.keyJustPressed = {};
+        this.keyJustReleased = {};
     }
 
     getMousePosition() {

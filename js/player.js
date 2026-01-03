@@ -54,6 +54,18 @@ export class Player {
         this.autoAttackCooldownMax = 3.0;
         this.autoAttackRange = 2.5;
         this.pendingDamageNumber = null; // For showing damage numbers
+
+        // Shockwave ability
+        this.shockwaveCharging = false;
+        this.shockwaveChargeTime = 0;
+        this.shockwaveMaxCharge = 4.5; // Time to reach max level (9)
+        this.shockwaveChargePerLevel = 0.5; // Time per charge level
+        this.shockwaveCooldown = 0;
+        this.shockwaveCooldownMax = 8;
+        this.shockwaveDamage = 15; // Base damage, scales with charge
+        this.shockwaveDirection = { x: 1, y: 0 }; // 4-way direction
+        this.shockwaveHitPending = false;
+        this.shockwaveTiles = [];
     }
 
     setMoveTarget(screenX, screenY, gameMap, enemies = null) {
@@ -242,6 +254,9 @@ export class Player {
         }
         if (this.autoAttackCooldown > 0) {
             this.autoAttackCooldown -= deltaTime;
+        }
+        if (this.shockwaveCooldown > 0) {
+            this.shockwaveCooldown -= deltaTime;
         }
 
         // Update attack timers
@@ -457,6 +472,115 @@ export class Player {
         this.shield = this.maxShield;
         this.shieldCooldown = this.shieldCooldownMax;
         return true;
+    }
+
+    startShockwaveCharge(screenX, screenY) {
+        if (this.shockwaveCooldown > 0 || this.shockwaveCharging) return false;
+
+        this.shockwaveCharging = true;
+        this.shockwaveChargeTime = 0;
+
+        // Calculate 4-way direction based on mouse position
+        this.updateShockwaveDirection(screenX, screenY);
+
+        // Stop movement while charging
+        this.targetTileX = this.tileX;
+        this.targetTileY = this.tileY;
+        this.path = [];
+
+        return true;
+    }
+
+    updateShockwaveDirection(screenX, screenY) {
+        // Get direction in tile space
+        const targetTile = isoToCart(screenX, screenY);
+        const dx = targetTile.x - this.tileX;
+        const dy = targetTile.y - this.tileY;
+
+        // Snap to 4-way direction (whichever axis is larger)
+        if (Math.abs(dx) >= Math.abs(dy)) {
+            this.shockwaveDirection = { x: Math.sign(dx) || 1, y: 0 };
+        } else {
+            this.shockwaveDirection = { x: 0, y: Math.sign(dy) || 1 };
+        }
+    }
+
+    updateShockwaveCharge(deltaTime, screenX, screenY) {
+        if (!this.shockwaveCharging) return;
+
+        this.shockwaveChargeTime = Math.min(this.shockwaveChargeTime + deltaTime, this.shockwaveMaxCharge);
+
+        // Update direction while charging
+        this.updateShockwaveDirection(screenX, screenY);
+
+        // Calculate current tiles for telegraph
+        this.shockwaveTiles = this.getShockwaveTiles();
+
+        // Lock movement while charging
+        this.targetTileX = this.tileX;
+        this.targetTileY = this.tileY;
+    }
+
+    releaseShockwave() {
+        if (!this.shockwaveCharging) return false;
+
+        this.shockwaveCharging = false;
+
+        // Only fire if we charged at least a little
+        if (this.shockwaveChargeTime >= this.shockwaveChargePerLevel * 0.5) {
+            this.shockwaveHitPending = true;
+            this.shockwaveTiles = this.getShockwaveTiles();
+            this.shockwaveCooldown = this.shockwaveCooldownMax;
+            this.movementLockout = 0.3;
+            return true;
+        }
+
+        this.shockwaveTiles = [];
+        return false;
+    }
+
+    cancelShockwave() {
+        this.shockwaveCharging = false;
+        this.shockwaveChargeTime = 0;
+        this.shockwaveTiles = [];
+    }
+
+    getShockwaveChargeLevel() {
+        return Math.min(9, Math.floor(this.shockwaveChargeTime / this.shockwaveChargePerLevel) + 1);
+    }
+
+    getShockwaveTiles() {
+        const level = this.getShockwaveChargeLevel();
+        const tiles = [];
+
+        // Width increases every 2 levels: 1,1,3,3,5,5,7,7,9
+        const width = 1 + Math.floor((level - 1) / 2) * 2;
+        const length = level;
+
+        const dirX = this.shockwaveDirection.x;
+        const dirY = this.shockwaveDirection.y;
+
+        // Perpendicular direction for width
+        const perpX = -dirY;
+        const perpY = dirX;
+
+        const halfWidth = Math.floor(width / 2);
+
+        for (let d = 1; d <= length; d++) {
+            for (let w = -halfWidth; w <= halfWidth; w++) {
+                tiles.push({
+                    x: this.tileX + dirX * d + perpX * w,
+                    y: this.tileY + dirY * d + perpY * w
+                });
+            }
+        }
+
+        return tiles;
+    }
+
+    getShockwaveDamage() {
+        const level = this.getShockwaveChargeLevel();
+        return this.shockwaveDamage + level * 5; // 20, 25, 30, 35, 40, 45, 50, 55, 60
     }
 
     setTargetEnemy(enemy) {

@@ -393,6 +393,49 @@ export class Renderer {
         ctx.strokeRect(x, y, width, height);
     }
 
+    drawShockwaveTelegraph(player) {
+        if (!player.shockwaveCharging && player.shockwaveTiles.length === 0) return;
+
+        const ctx = this.ctx;
+        const tiles = player.shockwaveTiles;
+        const chargeLevel = player.getShockwaveChargeLevel();
+
+        // Pulsing based on charge
+        const pulse = Math.sin(this.time * 8) * 0.2 + 0.7;
+
+        // Color intensity based on charge level
+        const intensity = Math.min(1, chargeLevel / 9);
+
+        for (const tile of tiles) {
+            const fillColor = `rgba(100, 180, 255, ${pulse * 0.4 * intensity})`;
+            const strokeColor = `rgba(150, 200, 255, ${pulse * intensity})`;
+            this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+        }
+
+        // Draw charge level indicator above player
+        if (player.shockwaveCharging) {
+            const pos = tileToScreenCenter(player.x, player.y);
+
+            // Charge bar background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(pos.x - 25, pos.y - 55, 50, 8);
+
+            // Charge bar fill
+            const chargePercent = player.shockwaveChargeTime / player.shockwaveMaxCharge;
+            const gradient = ctx.createLinearGradient(pos.x - 25, 0, pos.x + 25, 0);
+            gradient.addColorStop(0, '#4488ff');
+            gradient.addColorStop(1, '#88ccff');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(pos.x - 25, pos.y - 55, 50 * chargePercent, 8);
+
+            // Level text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Lv.${chargeLevel}`, pos.x, pos.y - 60);
+        }
+    }
+
     drawAttackEffect(player) {
         if (!player.isAttacking && !player.isCleaving) return;
 
@@ -504,6 +547,26 @@ export class Renderer {
                 overlay.style.height = `${percent}%`;
             } else {
                 abilityW.classList.remove('on-cooldown');
+                overlay.style.height = '0%';
+            }
+        }
+
+        // Shockwave cooldown
+        const abilityE = document.getElementById('ability-e');
+        if (abilityE) {
+            const overlay = abilityE.querySelector('.cooldown-overlay');
+            if (player.shockwaveCooldown > 0) {
+                abilityE.classList.add('on-cooldown');
+                const percent = (player.shockwaveCooldown / player.shockwaveCooldownMax) * 100;
+                overlay.style.height = `${percent}%`;
+            } else if (player.shockwaveCharging) {
+                // Show charging state
+                abilityE.classList.add('charging');
+                abilityE.classList.remove('on-cooldown');
+                overlay.style.height = '0%';
+            } else {
+                abilityE.classList.remove('on-cooldown');
+                abilityE.classList.remove('charging');
                 overlay.style.height = '0%';
             }
         }
