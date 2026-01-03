@@ -568,9 +568,6 @@ export class Player {
     getShockwaveTiles() {
         const level = this.getShockwaveChargeLevel();
         const tiles = [];
-
-        // Width increases every 2 levels: 1,1,3,3,5,5,7,7,9
-        const width = 1 + Math.floor((level - 1) / 2) * 2;
         const length = level;
 
         const dirX = this.shockwaveDirection.x;
@@ -580,9 +577,11 @@ export class Player {
         const perpX = -dirY;
         const perpY = dirX;
 
-        const halfWidth = Math.floor(width / 2);
-
         for (let d = 1; d <= length; d++) {
+            // Width expands based on distance: row 1 = 1 wide, rows 2-3 = 3 wide, rows 4-5 = 5 wide, etc.
+            const width = 1 + Math.floor((d - 1) / 2) * 2;
+            const halfWidth = Math.floor(width / 2);
+
             for (let w = -halfWidth; w <= halfWidth; w++) {
                 tiles.push({
                     x: this.tileX + dirX * d + perpX * w,
