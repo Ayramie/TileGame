@@ -219,8 +219,10 @@ export class Renderer {
         ctx.arc(7, -5, 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Orbiting particles
-        const particleCount = 8;
+        // Orbiting particles (reduced shadow for performance)
+        const particleCount = 6;
+        ctx.shadowColor = '#aa55ff';
+        ctx.shadowBlur = 5;
         for (let i = 0; i < particleCount; i++) {
             const angle = rotationAngle + (i / particleCount) * Math.PI * 2;
             const orbitRadius = 35 + Math.sin(this.time * 2 + i) * 5;
@@ -229,20 +231,19 @@ export class Renderer {
 
             const particleSize = 3 + Math.sin(this.time * 3 + i * 2) * 1.5;
 
-            ctx.shadowColor = '#aa55ff';
-            ctx.shadowBlur = 10;
             ctx.fillStyle = '#cc88ff';
             ctx.beginPath();
             ctx.arc(px, py, particleSize, 0, Math.PI * 2);
             ctx.fill();
         }
+        ctx.shadowBlur = 0;
 
-        // Energy tendrils
-        ctx.shadowBlur = 5;
+        // Energy tendrils (reduced for performance)
+        ctx.shadowBlur = 0;
         ctx.strokeStyle = 'rgba(150, 100, 255, 0.6)';
         ctx.lineWidth = 2;
 
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 4; i++) {
             const baseAngle = (i / 6) * Math.PI * 2 + this.time * 0.3;
             const tendrilLength = 25 + Math.sin(this.time * 2 + i) * 10;
 
@@ -520,9 +521,9 @@ export class Renderer {
                     ctx.fill();
                 }
 
-                // Core glow
+                // Core glow (reduced blur for performance)
                 ctx.shadowColor = '#ff6600';
-                ctx.shadowBlur = 15 * fadeAlpha;
+                ctx.shadowBlur = 6 * fadeAlpha;
                 ctx.fillStyle = `rgba(255, 150, 50, ${fadeAlpha * 0.4})`;
                 ctx.beginPath();
                 ctx.ellipse(centerX, centerY, 8, 4, 0, 0, Math.PI * 2);
