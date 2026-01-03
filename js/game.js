@@ -106,6 +106,14 @@ export class Game {
 
             // Update player
             this.player.update(deltaTime, this.gameMap, this.enemies);
+
+            // Check for pending damage numbers from auto-attacks
+            if (this.player.pendingDamageNumber) {
+                const dmg = this.player.pendingDamageNumber;
+                const pos = tileToScreenCenter(dmg.x, dmg.y);
+                this.combat.addDamageNumber(pos.x, pos.y - 40, dmg.damage);
+                this.player.pendingDamageNumber = null;
+            }
         } else {
             // Consume clicks so they don't queue up
             this.input.consumeLeftClick();

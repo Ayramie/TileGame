@@ -53,6 +53,7 @@ export class Player {
         this.autoAttackCooldown = 0;
         this.autoAttackCooldownMax = 3.0;
         this.autoAttackRange = 2.5;
+        this.pendingDamageNumber = null; // For showing damage numbers
     }
 
     setMoveTarget(screenX, screenY, gameMap, enemies = null) {
@@ -275,11 +276,27 @@ export class Player {
 
             if (dist <= this.autoAttackRange) {
                 // In range - attack if off cooldown
-                if (this.autoAttackCooldown <= 0 && this.attackCooldown <= 0) {
-                    // Face the enemy and attack
+                if (this.autoAttackCooldown <= 0) {
+                    // Face the enemy
                     const screenPos = tileToScreenCenter(enemyCenterX, enemyCenterY);
-                    this.attack(screenPos.x, screenPos.y);
+                    this.updateFacingDirection(dx, dy, screenPos.x, screenPos.y);
+
+                    // Direct hit on target (not tile-based)
+                    this.targetEnemy.takeDamage(this.attackDamage);
                     this.autoAttackCooldown = this.autoAttackCooldownMax;
+
+                    // Store for damage number display
+                    this.pendingDamageNumber = {
+                        x: enemyCenterX,
+                        y: enemyCenterY,
+                        damage: this.attackDamage
+                    };
+
+                    // Visual attack animation
+                    this.isAttacking = true;
+                    this.attackTimer = this.attackDuration;
+                    this.attackHitPending = false; // Already dealt damage
+                    this.movementLockout = this.attackMovementLockout;
                 }
                 // Stop moving when in range
                 this.targetTileX = this.tileX;
