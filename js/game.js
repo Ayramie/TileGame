@@ -167,11 +167,14 @@ export class Game {
         this.combat.processAddAttacks(this.adds, this.player);
         this.combat.update(deltaTime);
 
-        // Update environmental hazards
-        this.laserSystem.update(deltaTime, this.player, (tileX, tileY, damage) => {
-            const pos = tileToScreenCenter(tileX, tileY);
-            this.combat.addDamageNumber(pos.x, pos.y - 20, damage);
-        });
+        // Update environmental hazards (lasers only in phase 2)
+        const bossInPhase2 = this.enemies.some(e => e.phase === 2);
+        if (bossInPhase2) {
+            this.laserSystem.update(deltaTime, this.player, (tileX, tileY, damage) => {
+                const pos = tileToScreenCenter(tileX, tileY);
+                this.combat.addDamageNumber(pos.x, pos.y - 20, damage);
+            });
+        }
 
         // Update ground hazards (fire pools, etc.)
         this.groundHazards.update(deltaTime, this.player, (tileX, tileY, damage) => {
