@@ -88,9 +88,8 @@ export class Game {
                     // Set as target - player will run to and auto-attack
                     this.player.setTargetEnemy(clickedEnemy);
                 } else {
-                    // Clear target and attack in direction
+                    // Clear target when clicking empty space
                     this.player.clearTarget();
-                    this.player.attack(mouse.x, mouse.y);
                 }
             }
 
