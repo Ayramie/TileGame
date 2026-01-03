@@ -46,6 +46,7 @@ export class Player {
         this.path = [];
         this.pathIndex = 0;
         this.enemies = []; // Reference for pathfinding
+        this.pathfindCooldown = 0; // Prevent pathfinding spam
     }
 
     setMoveTarget(screenX, screenY, gameMap, enemies = null) {
@@ -229,6 +230,9 @@ export class Player {
         if (this.shieldCooldown > 0) {
             this.shieldCooldown -= deltaTime;
         }
+        if (this.pathfindCooldown > 0) {
+            this.pathfindCooldown -= deltaTime;
+        }
 
         // Update attack timers
         if (this.attackTimer > 0) {
@@ -306,8 +310,9 @@ export class Player {
                     }
                 }
             } else {
-                // Blocked by boss - calculate path around
-                if (this.finalDestination && this.gameMapRef && this.path.length === 0) {
+                // Blocked by boss - calculate path around (with cooldown to prevent spam)
+                if (this.finalDestination && this.gameMapRef && this.path.length === 0 && this.pathfindCooldown <= 0) {
+                    this.pathfindCooldown = 0.3; // Only pathfind every 0.3 seconds
                     const path = this.findPath(this.tileX, this.tileY, this.finalDestination.x, this.finalDestination.y, this.gameMapRef);
                     if (path && path.length > 0) {
                         this.path = path;
@@ -320,7 +325,7 @@ export class Player {
                         this.targetTileY = this.tileY;
                         this.finalDestination = null;
                     }
-                } else {
+                } else if (this.path.length > 0) {
                     // Already on a path but still blocked, stop
                     this.targetTileX = this.tileX;
                     this.targetTileY = this.tileY;
