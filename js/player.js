@@ -669,22 +669,23 @@ export class Player {
         const dirY = this.facingTileDir.y;
         const isDiagonal = dirX !== 0 && dirY !== 0;
 
-        // 3x2 cleave area (3 wide, 2 deep)
-        for (let depth = 1; depth <= 2; depth++) {
-            if (isDiagonal) {
-                // For diagonal directions, create filled squares to avoid waffle pattern
-                for (let wx = -1; wx <= 1; wx++) {
-                    for (let wy = -1; wy <= 1; wy++) {
-                        tiles.push({
-                            x: this.tileX + dirX * depth + wx,
-                            y: this.tileY + dirY * depth + wy
-                        });
-                    }
-                }
-            } else {
-                // For cardinal directions, use perpendicular expansion
-                const perpX = -dirY;
-                const perpY = dirX;
+        if (isDiagonal) {
+            // For diagonal directions, create a cone shape
+            // Depth 1: just the diagonal tile
+            tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY });
+            // Also the two adjacent tiles at depth 1
+            tiles.push({ x: this.tileX + dirX, y: this.tileY });
+            tiles.push({ x: this.tileX, y: this.tileY + dirY });
+
+            // Depth 2: the diagonal and neighbors
+            tiles.push({ x: this.tileX + dirX * 2, y: this.tileY + dirY * 2 });
+            tiles.push({ x: this.tileX + dirX * 2, y: this.tileY + dirY });
+            tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY * 2 });
+        } else {
+            // For cardinal directions, use perpendicular expansion (3 wide, 2 deep)
+            const perpX = -dirY;
+            const perpY = dirX;
+            for (let depth = 1; depth <= 2; depth++) {
                 for (let width = -1; width <= 1; width++) {
                     tiles.push({
                         x: this.tileX + dirX * depth + perpX * width,
