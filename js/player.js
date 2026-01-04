@@ -336,13 +336,22 @@ export class Player {
     }
 
     updateFacingDirection(tileDx, tileDy, screenX, screenY) {
-        // For tile-based direction (attacks)
-        if (Math.abs(tileDx) > Math.abs(tileDy)) {
-            this.facingTileDir = { x: Math.sign(tileDx), y: 0 };
-        } else if (Math.abs(tileDy) > Math.abs(tileDx)) {
-            this.facingTileDir = { x: 0, y: Math.sign(tileDy) };
-        } else if (tileDx !== 0 || tileDy !== 0) {
-            this.facingTileDir = { x: Math.sign(tileDx), y: Math.sign(tileDy) };
+        // For tile-based direction (attacks) - support 8 directions
+        if (tileDx !== 0 || tileDy !== 0) {
+            const angle = Math.atan2(tileDy, tileDx);
+            const segment = Math.round(angle / (Math.PI / 4)); // -4 to 4
+
+            // Map angle segment to 8 directions
+            switch (segment) {
+                case 0: this.facingTileDir = { x: 1, y: 0 }; break;      // Right
+                case 1: this.facingTileDir = { x: 1, y: 1 }; break;      // Down-Right
+                case 2: case -2: this.facingTileDir = { x: 0, y: 1 }; break; // Down
+                case -1: this.facingTileDir = { x: 1, y: -1 }; break;    // Up-Right
+                case 3: this.facingTileDir = { x: -1, y: 1 }; break;     // Down-Left
+                case -3: this.facingTileDir = { x: -1, y: -1 }; break;   // Up-Left
+                case 4: case -4: this.facingTileDir = { x: -1, y: 0 }; break; // Left
+                default: this.facingTileDir = { x: 0, y: -1 }; break;    // Up
+            }
         }
 
         // For visual direction (screen space for sword rendering)
