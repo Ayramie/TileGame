@@ -111,7 +111,7 @@ export class Renderer {
         const shadowScale = player.isLeaping ? Math.max(0.3, 1 - jumpHeight / 100) : 1;
         ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * shadowScale})`;
         ctx.beginPath();
-        ctx.ellipse(screenX, screenY - 5, 12 * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, screenY - 12, 12 * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Draw player character (moved up by jump height when leaping)
