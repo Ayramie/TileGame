@@ -71,6 +71,10 @@ export class Player {
         this.shockwaveExplosionTiles = [];
         this.shockwaveExplosionTimer = 0;
         this.shockwaveExplosionDuration = 0.4;
+
+        // Cleave aiming (hold Q to aim, release to fire)
+        this.cleaveAiming = false;
+        this.cleaveAimTiles = [];
     }
 
     setMoveTarget(screenX, screenY, gameMap, enemies = null) {
@@ -249,6 +253,51 @@ export class Player {
         return true;
     }
 
+    startCleaveAim(screenX, screenY) {
+        if (this.cleaveCooldown > 0 || this.cleaveAiming) return false;
+
+        this.cleaveAiming = true;
+        this.updateCleaveAim(screenX, screenY);
+        return true;
+    }
+
+    updateCleaveAim(screenX, screenY) {
+        if (!this.cleaveAiming) return;
+
+        // Calculate direction in tile space
+        const targetTile = isoToCart(screenX, screenY);
+        const dx = targetTile.x - this.tileX;
+        const dy = targetTile.y - this.tileY;
+
+        this.updateFacingDirection(dx, dy, screenX, screenY);
+
+        // Update aim tiles for telegraph display
+        this.cleaveAimTiles = this.getCleaveTiles();
+    }
+
+    releaseCleave() {
+        if (!this.cleaveAiming) return false;
+
+        this.cleaveAiming = false;
+
+        this.isCleaving = true;
+        this.cleaveTimer = this.cleaveDuration;
+        this.cleaveCooldown = this.cleaveCooldownMax;
+        this.cleaveHitPending = true;
+        this.movementLockout = this.cleaveMovementLockout;
+        // Stop current movement
+        this.targetTileX = this.tileX;
+        this.targetTileY = this.tileY;
+
+        this.cleaveAimTiles = [];
+        return true;
+    }
+
+    cancelCleaveAim() {
+        this.cleaveAiming = false;
+        this.cleaveAimTiles = [];
+    }
+
     cleave(screenX, screenY) {
         if (this.cleaveCooldown > 0) return false;
 
@@ -341,6 +390,46 @@ export class Player {
             return;
         }
 
+        // Emergency escape: if player is inside a boss, push them out
+        for (const enemy of enemies) {
+            if (!enemy.isAlive) continue;
+            if (enemy.currentAttack === 'BOUNCE' && enemy.attackPhase === 'execute') continue;
+            if (enemy.occupiesTile(this.tileX, this.tileY)) {
+                // Push away from enemy center
+                const enemyCenterX = enemy.tileX + enemy.width / 2;
+                const enemyCenterY = enemy.tileY + enemy.height / 2;
+                let pushDx = this.x - enemyCenterX;
+                let pushDy = this.y - enemyCenterY;
+                const pushDist = Math.sqrt(pushDx * pushDx + pushDy * pushDy);
+
+                if (pushDist > 0.1) {
+                    pushDx /= pushDist;
+                    pushDy /= pushDist;
+                } else {
+                    // Default push direction if exactly on center
+                    pushDx = 1;
+                    pushDy = 0;
+                }
+
+                // Find nearest safe tile in push direction
+                for (let d = 1; d <= 4; d++) {
+                    const safeTileX = Math.round(enemyCenterX + pushDx * (enemy.width / 2 + d));
+                    const safeTileY = Math.round(enemyCenterY + pushDy * (enemy.height / 2 + d));
+                    if (!enemy.occupiesTile(safeTileX, safeTileY)) {
+                        this.x = safeTileX;
+                        this.y = safeTileY;
+                        this.tileX = safeTileX;
+                        this.tileY = safeTileY;
+                        this.targetTileX = safeTileX;
+                        this.targetTileY = safeTileY;
+                        this.path = [];
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
         // Auto-attack targeting logic
         if (this.targetEnemy && this.targetEnemy.isAlive) {
             const enemyCenterX = this.targetEnemy.tileX + this.targetEnemy.width / 2;
@@ -408,11 +497,7 @@ export class Player {
                 newY = this.y + (dy / distance) * moveDistance;
             }
 
-            // Check if new tile would collide with boss (unless boss is bouncing)
-            const newTileX = Math.round(newX);
-            const newTileY = Math.round(newY);
-            let blocked = false;
-
+            // Helper to check if a tile is blocked by an enemy
             const isBlockedAt = (tx, ty) => {
                 for (const enemy of enemies) {
                     if (!enemy.isAlive) continue;
@@ -422,7 +507,11 @@ export class Player {
                 return false;
             };
 
-            blocked = isBlockedAt(newTileX, newTileY);
+            // Only check collision when we'd enter a NEW tile
+            const newTileX = Math.round(newX);
+            const newTileY = Math.round(newY);
+            const wouldChangeTile = newTileX !== this.tileX || newTileY !== this.tileY;
+            const blocked = wouldChangeTile && isBlockedAt(newTileX, newTileY);
 
             if (!blocked) {
                 this.x = newX;
@@ -434,11 +523,9 @@ export class Player {
                     if (Math.abs(this.x - waypoint.x) < 0.1 && Math.abs(this.y - waypoint.y) < 0.1) {
                         this.pathIndex++;
                         if (this.pathIndex < this.path.length) {
-                            // Move to next waypoint
                             this.targetTileX = this.path[this.pathIndex].x;
                             this.targetTileY = this.path[this.pathIndex].y;
                         } else if (this.finalDestination) {
-                            // Reached end of path, go to final destination
                             this.targetTileX = this.finalDestination.x;
                             this.targetTileY = this.finalDestination.y;
                             this.path = [];
@@ -446,30 +533,32 @@ export class Player {
                     }
                 }
             } else {
-                // Blocked - try sliding along the edge (move on one axis only)
+                // Blocked entering new tile - slide along the edge
                 let slid = false;
+                const normDx = dx / distance;
+                const normDy = dy / distance;
 
-                // Try moving on X axis only
-                const slideX = this.x + (dx / distance) * moveDistance;
+                // Try X-only movement
+                const slideX = this.x + normDx * moveDistance;
                 const slideTileX = Math.round(slideX);
-                if (!isBlockedAt(slideTileX, this.tileY) && slideTileX !== this.tileX) {
+                if (slideTileX === this.tileX || !isBlockedAt(slideTileX, this.tileY)) {
                     this.x = slideX;
                     slid = true;
                 }
 
-                // Try moving on Y axis only
+                // Try Y-only movement
                 if (!slid) {
-                    const slideY = this.y + (dy / distance) * moveDistance;
+                    const slideY = this.y + normDy * moveDistance;
                     const slideTileY = Math.round(slideY);
-                    if (!isBlockedAt(this.tileX, slideTileY) && slideTileY !== this.tileY) {
+                    if (slideTileY === this.tileY || !isBlockedAt(this.tileX, slideTileY)) {
                         this.y = slideY;
                         slid = true;
                     }
                 }
 
-                // If couldn't slide, try pathfinding around
+                // Pathfind if can't slide
                 if (!slid && this.finalDestination && this.gameMapRef && this.path.length === 0 && this.pathfindCooldown <= 0) {
-                    this.pathfindCooldown = 0.3; // Only pathfind every 0.3 seconds
+                    this.pathfindCooldown = 0.3;
                     const path = this.findPath(this.tileX, this.tileY, this.finalDestination.x, this.finalDestination.y, this.gameMapRef);
                     if (path && path.length > 0) {
                         this.path = path;
@@ -477,13 +566,11 @@ export class Player {
                         this.targetTileX = path[0].x;
                         this.targetTileY = path[0].y;
                     } else {
-                        // No path found, stop
                         this.targetTileX = this.tileX;
                         this.targetTileY = this.tileY;
                         this.finalDestination = null;
                     }
                 } else if (!slid && this.path.length > 0) {
-                    // Already on a path but still blocked and can't slide, stop
                     this.targetTileX = this.tileX;
                     this.targetTileY = this.tileY;
                     this.path = [];
@@ -532,18 +619,30 @@ export class Player {
         const tiles = [];
         const dirX = this.facingTileDir.x;
         const dirY = this.facingTileDir.y;
-
-        // Perpendicular direction for width
-        const perpX = -dirY;
-        const perpY = dirX;
+        const isDiagonal = dirX !== 0 && dirY !== 0;
 
         // 3x2 cleave area (3 wide, 2 deep)
         for (let depth = 1; depth <= 2; depth++) {
-            for (let width = -1; width <= 1; width++) {
-                tiles.push({
-                    x: this.tileX + dirX * depth + perpX * width,
-                    y: this.tileY + dirY * depth + perpY * width
-                });
+            if (isDiagonal) {
+                // For diagonal directions, create filled squares to avoid waffle pattern
+                for (let wx = -1; wx <= 1; wx++) {
+                    for (let wy = -1; wy <= 1; wy++) {
+                        tiles.push({
+                            x: this.tileX + dirX * depth + wx,
+                            y: this.tileY + dirY * depth + wy
+                        });
+                    }
+                }
+            } else {
+                // For cardinal directions, use perpendicular expansion
+                const perpX = -dirY;
+                const perpY = dirX;
+                for (let width = -1; width <= 1; width++) {
+                    tiles.push({
+                        x: this.tileX + dirX * depth + perpX * width,
+                        y: this.tileY + dirY * depth + perpY * width
+                    });
+                }
             }
         }
 
@@ -674,16 +773,15 @@ export class Player {
             const halfWidth = Math.floor(width / 2);
 
             if (isDiagonal) {
-                // For diagonal directions, expand perpendicular along both axes
-                // The perpendicular to a diagonal is the other diagonal
-                const perpX = dirX;  // Same X, opposite Y movement
-                const perpY = -dirY;
-
-                for (let w = -halfWidth; w <= halfWidth; w++) {
-                    tiles.push({
-                        x: this.tileX + dirX * d + perpX * w,
-                        y: this.tileY + dirY * d + perpY * w
-                    });
+                // For diagonal directions, create a filled square at each distance
+                // This prevents the "waffle" pattern by filling all tiles in the area
+                for (let wx = -halfWidth; wx <= halfWidth; wx++) {
+                    for (let wy = -halfWidth; wy <= halfWidth; wy++) {
+                        tiles.push({
+                            x: this.tileX + dirX * d + wx,
+                            y: this.tileY + dirY * d + wy
+                        });
+                    }
                 }
             } else {
                 // For cardinal directions, use simple perpendicular

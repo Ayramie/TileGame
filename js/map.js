@@ -25,7 +25,7 @@ export function cartToIso(tileX, tileY) {
     };
 }
 
-// Convert screen position to cartesian tile coordinates
+// Convert screen position to cartesian tile coordinates (returns floats for precise clicking)
 export function isoToCart(screenX, screenY) {
     // Adjust for offset
     const x = screenX - ISO_OFFSET_X;
@@ -36,8 +36,8 @@ export function isoToCart(screenX, screenY) {
     const tileY = (y / (ISO_TILE_HEIGHT / 2) - x / (ISO_TILE_WIDTH / 2)) / 2;
 
     return {
-        x: Math.floor(tileX),
-        y: Math.floor(tileY)
+        x: tileX,
+        y: tileY
     };
 }
 

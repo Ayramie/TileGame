@@ -543,6 +543,23 @@ export class Renderer {
         }
     }
 
+    drawCleaveAimTelegraph(player) {
+        if (!player.cleaveAiming) return;
+
+        const ctx = this.ctx;
+        // Get tiles fresh each frame in case they weren't set
+        const tiles = player.cleaveAimTiles.length > 0 ? player.cleaveAimTiles : player.getCleaveTiles();
+
+        // Pulsing effect
+        const pulse = Math.sin(this.time * 6) * 0.2 + 0.7;
+
+        for (const tile of tiles) {
+            const fillColor = `rgba(255, 150, 50, ${pulse * 0.5})`;
+            const strokeColor = `rgba(255, 200, 100, ${pulse})`;
+            this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+        }
+    }
+
     drawAttackEffect(player) {
         if (!player.isAttacking && !player.isCleaving) return;
 

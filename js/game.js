@@ -1,4 +1,4 @@
-import { GameMap, getCanvasSize, tileToScreenCenter, isoToCart } from './map.js';
+import { GameMap, getCanvasSize, tileToScreenCenter, isoToCart, cartToIso } from './map.js';
 import { Player } from './player.js';
 import { Enemy, Add } from './enemy.js';
 import { InputHandler } from './input.js';
@@ -11,10 +11,9 @@ export class Game {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
 
-        // Set canvas size for isometric map
-        const canvasSize = getCanvasSize();
-        this.canvas.width = canvasSize.width;
-        this.canvas.height = canvasSize.height;
+        // Set canvas to a fixed viewport size (camera will follow player)
+        this.canvas.width = 1024;
+        this.canvas.height = 768;
 
         this.gameMap = new GameMap();
         this.player = new Player(5, 5);
@@ -59,10 +58,12 @@ export class Game {
         // Handle input (only if player is alive)
         const rawMouse = this.input.getMousePosition();
         const zoom = this.input.getZoom();
-        // Convert mouse position to account for zoom (centered zoom)
+        // Get player screen position for camera
+        const playerScreen = tileToScreenCenter(this.player.x, this.player.y);
+        // Convert mouse position to world coordinates (accounting for zoom and camera)
         const mouse = {
-            x: (rawMouse.x - this.canvas.width / 2) / zoom + this.canvas.width / 2,
-            y: (rawMouse.y - this.canvas.height / 2) / zoom + this.canvas.height / 2
+            x: (rawMouse.x - this.canvas.width / 2) / zoom + playerScreen.x,
+            y: (rawMouse.y - this.canvas.height / 2) / zoom + playerScreen.y
         };
 
         if (this.player.isAlive) {
@@ -75,12 +76,12 @@ export class Game {
             // Right click to attack or target enemy
             if (this.input.consumeRightClick()) {
                 const clickTile = isoToCart(mouse.x, mouse.y);
-                // Round to integer tile coordinates for proper matching
+                // Use fractional coordinates for distance-based detection
                 const tileX = Math.floor(clickTile.x);
                 const tileY = Math.floor(clickTile.y);
                 let clickedEnemy = null;
 
-                // Check if clicking on an enemy (boss)
+                // Check if clicking on an enemy (boss) - tile-based for large enemies
                 for (const enemy of this.enemies) {
                     if (enemy.isAlive && enemy.occupiesTile(tileX, tileY)) {
                         clickedEnemy = enemy;
@@ -88,13 +89,27 @@ export class Game {
                     }
                 }
 
-                // Check if clicking on an add
+                // Check if clicking on an add - use distance-based detection for small 1x1 targets
                 if (!clickedEnemy) {
+                    let closestAdd = null;
+                    let closestDist = 1.5; // Max click radius in tiles
+
                     for (const add of this.adds) {
-                        if (add.isAlive && add.occupiesTile(tileX, tileY)) {
-                            clickedEnemy = add;
-                            break;
+                        if (!add.isAlive) continue;
+
+                        // Check distance from click to add's smooth position
+                        const dx = clickTile.x - add.smoothX;
+                        const dy = clickTile.y - add.smoothY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < closestDist) {
+                            closestDist = dist;
+                            closestAdd = add;
                         }
+                    }
+
+                    if (closestAdd) {
+                        clickedEnemy = closestAdd;
                     }
                 }
 
@@ -107,9 +122,15 @@ export class Game {
                 }
             }
 
-            // Q for cleave
+            // Q for cleave (hold to aim, release to fire)
             if (this.input.wasKeyJustPressed('q')) {
-                this.player.cleave(mouse.x, mouse.y);
+                this.player.startCleaveAim(mouse.x, mouse.y);
+            }
+            if (this.input.isKeyPressed('q') && this.player.cleaveAiming) {
+                this.player.updateCleaveAim(mouse.x, mouse.y);
+            }
+            if (this.input.wasKeyJustReleased('q') && this.player.cleaveAiming) {
+                this.player.releaseCleave();
             }
 
             // W for shield
@@ -191,19 +212,24 @@ export class Game {
         const zoom = this.input.getZoom();
         this.renderer.clear();
 
-        // Apply zoom centered on canvas
+        // Get player screen position for camera centering
+        const playerScreen = tileToScreenCenter(this.player.x, this.player.y);
+
+        // Apply camera transform: center on player, then zoom
         this.ctx.save();
+        // Translate so player is at canvas center, then apply zoom
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         this.ctx.scale(zoom, zoom);
-        this.ctx.translate(-this.canvas.width / 2, -this.canvas.height / 2);
+        this.ctx.translate(-playerScreen.x, -playerScreen.y);
 
         this.renderer.drawMap(this.gameMap);
 
-        // Draw cursor highlight (adjust for zoom)
+        // Draw cursor highlight (adjust for zoom and camera)
         const rawMouse = this.input.getMousePosition();
+        // Convert screen mouse to world coordinates
         const cursorMouse = {
-            x: (rawMouse.x - this.canvas.width / 2) / zoom + this.canvas.width / 2,
-            y: (rawMouse.y - this.canvas.height / 2) / zoom + this.canvas.height / 2
+            x: (rawMouse.x - this.canvas.width / 2) / zoom + playerScreen.x,
+            y: (rawMouse.y - this.canvas.height / 2) / zoom + playerScreen.y
         };
         this.renderer.drawCursor(cursorMouse.x, cursorMouse.y, this.gameMap);
 
@@ -248,6 +274,9 @@ export class Game {
 
         // Draw shockwave telegraph (while charging)
         this.renderer.drawShockwaveTelegraph(this.player);
+
+        // Draw cleave aim telegraph (while aiming)
+        this.renderer.drawCleaveAimTelegraph(this.player);
 
         // Draw attack effects (on top)
         this.renderer.drawAttackEffect(this.player);
