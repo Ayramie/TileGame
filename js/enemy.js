@@ -212,8 +212,8 @@ export class Enemy {
         // Don't move if very close
         if (distance < 3) return;
 
-        // Don't move if player is far - wait for BOUNCE
-        if (distance >= this.farThreshold) return;
+        // Don't move if player is far AND bounce is ready - wait for BOUNCE
+        if (distance >= this.farThreshold && this.attackCooldowns.BOUNCE <= 0) return;
 
         // Move one tile towards player
         let moveX = 0;
