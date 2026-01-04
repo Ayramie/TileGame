@@ -345,12 +345,12 @@ export class Player {
             switch (segment) {
                 case 0: this.facingTileDir = { x: 1, y: 0 }; break;      // Right
                 case 1: this.facingTileDir = { x: 1, y: 1 }; break;      // Down-Right
-                case 2: case -2: this.facingTileDir = { x: 0, y: 1 }; break; // Down
-                case -1: this.facingTileDir = { x: 1, y: -1 }; break;    // Up-Right
+                case 2: this.facingTileDir = { x: 0, y: 1 }; break;      // Down
                 case 3: this.facingTileDir = { x: -1, y: 1 }; break;     // Down-Left
-                case -3: this.facingTileDir = { x: -1, y: -1 }; break;   // Up-Left
                 case 4: case -4: this.facingTileDir = { x: -1, y: 0 }; break; // Left
-                default: this.facingTileDir = { x: 0, y: -1 }; break;    // Up
+                case -3: this.facingTileDir = { x: -1, y: -1 }; break;   // Up-Left
+                case -2: this.facingTileDir = { x: 0, y: -1 }; break;    // Up
+                case -1: this.facingTileDir = { x: 1, y: -1 }; break;    // Up-Right
             }
         }
 
@@ -670,17 +670,17 @@ export class Player {
         const isDiagonal = dirX !== 0 && dirY !== 0;
 
         if (isDiagonal) {
-            // For diagonal directions, create a cone shape
-            // Depth 1: just the diagonal tile
-            tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY });
-            // Also the two adjacent tiles at depth 1
+            // 7 tiles in a figure-8 / hourglass pattern
+            // Row 1 (closest): 3 tiles
             tiles.push({ x: this.tileX + dirX, y: this.tileY });
+            tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY });
             tiles.push({ x: this.tileX, y: this.tileY + dirY });
-
-            // Depth 2: the diagonal and neighbors
+            // Row 2 (middle): 1 tile
             tiles.push({ x: this.tileX + dirX * 2, y: this.tileY + dirY * 2 });
-            tiles.push({ x: this.tileX + dirX * 2, y: this.tileY + dirY });
-            tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY * 2 });
+            // Row 3 (far): 3 tiles
+            tiles.push({ x: this.tileX + dirX * 3, y: this.tileY + dirY * 2 });
+            tiles.push({ x: this.tileX + dirX * 3, y: this.tileY + dirY * 3 });
+            tiles.push({ x: this.tileX + dirX * 2, y: this.tileY + dirY * 3 });
         } else {
             // For cardinal directions, use perpendicular expansion (3 wide, 2 deep)
             const perpX = -dirY;
