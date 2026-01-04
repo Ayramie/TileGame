@@ -232,6 +232,117 @@ export class Renderer {
         }
     }
 
+    drawPillar(pillar, isTargeted = false) {
+        const ctx = this.ctx;
+        const pos = tileToScreenCenter(pillar.tileX + 0.5, pillar.tileY + 0.5);
+        const screenX = pos.x;
+        const screenY = pos.y;
+
+        const rgb = pillar.getColorRGB();
+        const glowIntensity = pillar.glowing ? (Math.sin(this.time * 3) * 0.3 + 0.7) : 0.3;
+
+        ctx.save();
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(screenX, screenY - 5, 10, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pillar base (darker)
+        ctx.fillStyle = `rgba(${rgb.r * 0.5}, ${rgb.g * 0.5}, ${rgb.b * 0.5}, 1)`;
+        ctx.beginPath();
+        ctx.moveTo(screenX - 8, screenY - 10);
+        ctx.lineTo(screenX + 8, screenY - 10);
+        ctx.lineTo(screenX + 6, screenY - 40);
+        ctx.lineTo(screenX - 6, screenY - 40);
+        ctx.closePath();
+        ctx.fill();
+
+        // Pillar glow effect
+        if (pillar.glowing) {
+            ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)`;
+            ctx.shadowBlur = 20 * glowIntensity;
+        }
+
+        // Pillar top crystal
+        ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.6 + glowIntensity * 0.4})`;
+        ctx.beginPath();
+        ctx.moveTo(screenX, screenY - 55);
+        ctx.lineTo(screenX + 8, screenY - 40);
+        ctx.lineTo(screenX, screenY - 35);
+        ctx.lineTo(screenX - 8, screenY - 40);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+
+        // Hit flash
+        if (pillar.hitFlashTimer > 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.moveTo(screenX - 8, screenY - 10);
+            ctx.lineTo(screenX + 8, screenY - 10);
+            ctx.lineTo(screenX + 6, screenY - 40);
+            ctx.lineTo(screenX - 6, screenY - 40);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Target highlight
+        if (isTargeted) {
+            const targetPulse = Math.sin(this.time * 4) * 0.3 + 0.7;
+            ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(screenX, screenY - 5, 14, 7, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+
+        // Health bar
+        this.drawHealthBar(screenX - 15, screenY - 65, 30, 4, pillar.health, pillar.maxHealth, `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+    }
+
+    drawPuzzleFloor(centerX, centerY, phase, flashTimer, flashDuration, flashCount, correctColor) {
+        const ctx = this.ctx;
+
+        if (phase === 'waiting') {
+            // Draw white highlighted center tile
+            const pulse = Math.sin(this.time * 4) * 0.3 + 0.7;
+            const fillColor = `rgba(255, 255, 255, ${pulse * 0.4})`;
+            const strokeColor = `rgba(255, 255, 255, ${pulse})`;
+            this.drawIsometricTile(centerX, centerY, fillColor, strokeColor);
+        } else if (phase === 'flashing') {
+            // Flash between white and black
+            const isWhite = flashCount % 2 === 0;
+            const flashProgress = 1 - (flashTimer / flashDuration);
+            const alpha = isWhite ? (1 - flashProgress) * 0.8 : flashProgress * 0.5;
+
+            if (isWhite) {
+                this.drawIsometricTile(centerX, centerY, `rgba(255, 255, 255, ${alpha})`, `rgba(255, 255, 255, ${alpha})`);
+            } else {
+                this.drawIsometricTile(centerX, centerY, `rgba(0, 0, 0, ${alpha})`, `rgba(50, 50, 50, ${alpha})`);
+            }
+        } else if (phase === 'active' && correctColor) {
+            // Show the correct color on the center tile
+            let rgb;
+            switch (correctColor) {
+                case 'red': rgb = { r: 255, g: 80, b: 80 }; break;
+                case 'blue': rgb = { r: 80, g: 150, b: 255 }; break;
+                case 'green': rgb = { r: 80, g: 255, b: 120 }; break;
+                case 'yellow': rgb = { r: 255, g: 230, b: 80 }; break;
+                default: rgb = { r: 255, g: 255, b: 255 };
+            }
+
+            const pulse = Math.sin(this.time * 3) * 0.2 + 0.8;
+            const fillColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${pulse * 0.6})`;
+            const strokeColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${pulse})`;
+            this.drawIsometricTile(centerX, centerY, fillColor, strokeColor);
+        }
+    }
+
     drawElementalBoss(enemy, isTargeted = false) {
         const ctx = this.ctx;
 

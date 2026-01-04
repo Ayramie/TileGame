@@ -1,6 +1,6 @@
-import { GameMap, getCanvasSize, tileToScreenCenter, isoToCart, cartToIso } from './map.js';
+import { GameMap, getCanvasSize, tileToScreenCenter, isoToCart, cartToIso, MAP_WIDTH, MAP_HEIGHT } from './map.js';
 import { Player } from './player.js';
-import { Enemy, Add } from './enemy.js';
+import { Enemy, Add, Pillar } from './enemy.js';
 import { InputHandler } from './input.js';
 import { CombatSystem } from './combat.js';
 import { Renderer } from './renderer.js';
@@ -17,15 +17,35 @@ export class Game {
 
         this.gameMap = new GameMap();
         this.player = new Player(5, 5);
-        this.enemies = [
-            new Enemy(15, 12) // Elemental boss
-        ];
+        this.enemies = []; // Boss spawns after puzzle
         this.adds = []; // Spawned minions
         this.input = new InputHandler(canvas);
         this.combat = new CombatSystem();
         this.renderer = new Renderer(canvas, this.ctx);
         this.laserSystem = new LaserHazardSystem();
         this.groundHazards = new GroundHazardSystem();
+
+        // Puzzle state
+        this.puzzlePhase = 'waiting'; // 'waiting', 'flashing', 'active', 'complete'
+        this.puzzleColors = ['red', 'blue', 'green', 'yellow'];
+        this.correctColor = null;
+        this.puzzleFlashTimer = 0;
+        this.puzzleFlashCount = 0;
+        this.puzzleFlashMaxCount = 6; // Number of flashes before showing color
+        this.puzzleFlashDuration = 0.3; // Duration of each flash
+
+        // Center tile position
+        this.centerTileX = Math.floor(MAP_WIDTH / 2);
+        this.centerTileY = Math.floor(MAP_HEIGHT / 2);
+
+        // Create pillars in 4 corners of center area
+        const pillarOffset = 6;
+        this.pillars = [
+            new Pillar(this.centerTileX - pillarOffset, this.centerTileY - pillarOffset, 'red'),
+            new Pillar(this.centerTileX + pillarOffset, this.centerTileY - pillarOffset, 'blue'),
+            new Pillar(this.centerTileX - pillarOffset, this.centerTileY + pillarOffset, 'green'),
+            new Pillar(this.centerTileX + pillarOffset, this.centerTileY + pillarOffset, 'yellow')
+        ];
 
         this.lastTime = 0;
         this.running = false;
@@ -113,6 +133,16 @@ export class Game {
                     }
                 }
 
+                // Check if clicking on a pillar (during puzzle phase)
+                if (!clickedEnemy && this.puzzlePhase === 'active') {
+                    for (const pillar of this.pillars) {
+                        if (pillar.isAlive && pillar.occupiesTile(tileX, tileY)) {
+                            clickedEnemy = pillar;
+                            break;
+                        }
+                    }
+                }
+
                 if (clickedEnemy) {
                     // Set as target - player will run to and auto-attack
                     this.player.setTargetEnemy(clickedEnemy);
@@ -196,8 +226,11 @@ export class Game {
             add.update(deltaTime, this.player, this.gameMap);
         }
 
-        // Process combat (include adds as enemies)
+        // Process combat (include adds and pillars as enemies)
         const allEnemies = [...this.enemies, ...this.adds];
+        if (this.puzzlePhase === 'active') {
+            allEnemies.push(...this.pillars.filter(p => p.isAlive));
+        }
         this.combat.processAttack(this.player, allEnemies);
         this.combat.processCleave(this.player, allEnemies);
         this.combat.processShockwave(this.player, allEnemies);
@@ -218,6 +251,86 @@ export class Game {
         this.groundHazards.update(deltaTime, this.player, (tileX, tileY, damage) => {
             this.combat.addPlayerDamageNumber(damage);
         });
+
+        // Update pillars
+        for (const pillar of this.pillars) {
+            pillar.update(deltaTime);
+        }
+
+        // Update puzzle state
+        this.updatePuzzle(deltaTime);
+    }
+
+    updatePuzzle(deltaTime) {
+        // Waiting phase: check if player steps on center tile
+        if (this.puzzlePhase === 'waiting') {
+            if (this.player.tileX === this.centerTileX && this.player.tileY === this.centerTileY) {
+                // Start flashing phase
+                this.puzzlePhase = 'flashing';
+                this.puzzleFlashTimer = this.puzzleFlashDuration;
+                this.puzzleFlashCount = 0;
+                // Stop pillar glow
+                for (const pillar of this.pillars) {
+                    pillar.glowing = false;
+                }
+            }
+        }
+
+        // Flashing phase: flash the floor, then reveal correct color
+        if (this.puzzlePhase === 'flashing') {
+            this.puzzleFlashTimer -= deltaTime;
+            if (this.puzzleFlashTimer <= 0) {
+                this.puzzleFlashCount++;
+                this.puzzleFlashTimer = this.puzzleFlashDuration;
+
+                if (this.puzzleFlashCount >= this.puzzleFlashMaxCount) {
+                    // Done flashing - pick random color and start active phase
+                    this.correctColor = this.puzzleColors[Math.floor(Math.random() * this.puzzleColors.length)];
+                    this.puzzlePhase = 'active';
+                }
+            }
+        }
+
+        // Active phase: check if a pillar was destroyed
+        if (this.puzzlePhase === 'active') {
+            for (const pillar of this.pillars) {
+                if (!pillar.isAlive && pillar.justDied === undefined) {
+                    pillar.justDied = true; // Mark so we only process once
+
+                    if (pillar.color === this.correctColor) {
+                        // Correct pillar! Spawn boss
+                        this.puzzlePhase = 'complete';
+                        this.enemies.push(new Enemy(this.centerTileX - 1, this.centerTileY - 1));
+                        this.player.clearTarget();
+                    } else {
+                        // Wrong pillar! Take damage and reset
+                        this.player.takeDamage(25);
+                        this.combat.addPlayerDamageNumber(25);
+                        this.resetPuzzle();
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    resetPuzzle() {
+        this.puzzlePhase = 'waiting';
+        this.correctColor = null;
+        this.puzzleFlashTimer = 0;
+        this.puzzleFlashCount = 0;
+
+        // Reset all pillars
+        const pillarOffset = 6;
+        const positions = [
+            { x: this.centerTileX - pillarOffset, y: this.centerTileY - pillarOffset, color: 'red' },
+            { x: this.centerTileX + pillarOffset, y: this.centerTileY - pillarOffset, color: 'blue' },
+            { x: this.centerTileX - pillarOffset, y: this.centerTileY + pillarOffset, color: 'green' },
+            { x: this.centerTileX + pillarOffset, y: this.centerTileY + pillarOffset, color: 'yellow' }
+        ];
+
+        this.pillars = positions.map(p => new Pillar(p.x, p.y, p.color));
+        this.player.clearTarget();
     }
 
     render() {
@@ -235,6 +348,19 @@ export class Game {
         this.ctx.translate(-playerScreen.x, -playerScreen.y);
 
         this.renderer.drawMap(this.gameMap);
+
+        // Draw puzzle floor effects (center tile highlight and color flash)
+        if (this.puzzlePhase !== 'complete') {
+            this.renderer.drawPuzzleFloor(
+                this.centerTileX,
+                this.centerTileY,
+                this.puzzlePhase,
+                this.puzzleFlashTimer,
+                this.puzzleFlashDuration,
+                this.puzzleFlashCount,
+                this.correctColor
+            );
+        }
 
         // Draw cursor highlight (adjust for zoom and camera)
         const rawMouse = this.input.getMousePosition();
@@ -265,7 +391,8 @@ export class Game {
         const entities = [
             { type: 'player', obj: this.player, depth: this.player.x + this.player.y },
             ...this.enemies.map(e => ({ type: 'enemy', obj: e, depth: e.tileX + e.tileY + 1 })),
-            ...this.adds.map(a => ({ type: 'add', obj: a, depth: a.tileX + a.tileY }))
+            ...this.adds.map(a => ({ type: 'add', obj: a, depth: a.tileX + a.tileY })),
+            ...this.pillars.filter(p => p.isAlive).map(p => ({ type: 'pillar', obj: p, depth: p.tileX + p.tileY }))
         ];
 
         // Sort by depth (back to front)
@@ -281,6 +408,9 @@ export class Game {
             } else if (entity.type === 'add') {
                 const isTargeted = this.player.targetEnemy === entity.obj;
                 this.renderer.drawAdd(entity.obj, isTargeted);
+            } else if (entity.type === 'pillar') {
+                const isTargeted = this.player.targetEnemy === entity.obj;
+                this.renderer.drawPillar(entity.obj, isTargeted);
             }
         }
 

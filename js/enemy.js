@@ -856,3 +856,52 @@ export class Add {
         return tx === this.tileX && ty === this.tileY;
     }
 }
+
+// Pillar for the pre-boss puzzle
+export class Pillar {
+    constructor(tileX, tileY, color) {
+        this.tileX = tileX;
+        this.tileY = tileY;
+        this.smoothX = tileX;
+        this.smoothY = tileY;
+        this.width = 1;
+        this.height = 1;
+        this.color = color; // 'red', 'blue', 'green', 'yellow'
+        this.health = 100;
+        this.maxHealth = 100;
+        this.isAlive = true;
+        this.glowing = true; // Pillars glow until puzzle starts
+        this.hitFlashTimer = 0;
+        this.hitFlashDuration = 0.15;
+    }
+
+    update(deltaTime) {
+        if (this.hitFlashTimer > 0) {
+            this.hitFlashTimer -= deltaTime;
+        }
+    }
+
+    takeDamage(amount) {
+        if (!this.isAlive) return;
+        this.health -= amount;
+        this.hitFlashTimer = this.hitFlashDuration;
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isAlive = false;
+        }
+    }
+
+    occupiesTile(tx, ty) {
+        return tx === this.tileX && ty === this.tileY;
+    }
+
+    getColorRGB() {
+        switch (this.color) {
+            case 'red': return { r: 255, g: 80, b: 80 };
+            case 'blue': return { r: 80, g: 150, b: 255 };
+            case 'green': return { r: 80, g: 255, b: 120 };
+            case 'yellow': return { r: 255, g: 230, b: 80 };
+            default: return { r: 255, g: 255, b: 255 };
+        }
+    }
+}
