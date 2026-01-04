@@ -867,6 +867,7 @@ export class Pillar {
         this.width = 1;
         this.height = 1;
         this.color = color; // 'red', 'blue', 'green', 'yellow'
+        this.originalColor = color; // Store original for puzzle check
         this.health = 100;
         this.maxHealth = 100;
         this.isAlive = true;

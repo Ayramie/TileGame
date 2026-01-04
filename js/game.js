@@ -298,7 +298,7 @@ export class Game {
                 if (!pillar.isAlive && pillar.justDied === undefined) {
                     pillar.justDied = true; // Mark so we only process once
 
-                    if (pillar.color === this.correctColor) {
+                    if (pillar.originalColor === this.correctColor) {
                         // Correct pillar! Spawn boss and destroy all pillars
                         this.puzzlePhase = 'complete';
                         for (const p of this.pillars) {
