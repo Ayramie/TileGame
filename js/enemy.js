@@ -500,7 +500,7 @@ export class Enemy {
                     }
 
                     // Update start position for next bounce
-                    this.bounceStartPos = landPos;
+                    this.bounceStartPos = { x: landPos.x, y: landPos.y };
                     this.currentBounce = newBounce;
                 }
 
@@ -508,11 +508,22 @@ export class Enemy {
                 const bounceElapsed = elapsed - (this.currentBounce * bounceDuration);
                 this.bounceProgress = Math.min(1, bounceElapsed / bounceDuration);
 
-                // Interpolate position
+                // Interpolate position - set BOTH tile and smooth position directly
                 const targetPos = this.bouncePositions[this.currentBounce];
                 if (targetPos) {
-                    this.tileX = Math.round(this.bounceStartPos.x + (targetPos.x - this.bounceStartPos.x) * this.bounceProgress);
-                    this.tileY = Math.round(this.bounceStartPos.y + (targetPos.y - this.bounceStartPos.y) * this.bounceProgress);
+                    // Smooth interpolation for visual position
+                    const interpX = this.bounceStartPos.x + (targetPos.x - this.bounceStartPos.x) * this.bounceProgress;
+                    const interpY = this.bounceStartPos.y + (targetPos.y - this.bounceStartPos.y) * this.bounceProgress;
+
+                    // Set smooth position directly (bypasses updateSmoothPosition lag)
+                    this.smoothX = interpX;
+                    this.smoothY = interpY;
+
+                    // Only update tile position when we've landed (progress >= 1)
+                    if (this.bounceProgress >= 0.95) {
+                        this.tileX = targetPos.x;
+                        this.tileY = targetPos.y;
+                    }
                     this.x = this.tileX * TILE_SIZE;
                     this.y = this.tileY * TILE_SIZE;
                 }
@@ -573,6 +584,16 @@ export class Enemy {
                             }
                         }
                         this.groundHazards.addHazardsFromTiles(poisonTiles, 'poison', 5.0, 6);
+                    }
+
+                    // Sync final position
+                    if (finalPos) {
+                        this.tileX = finalPos.x;
+                        this.tileY = finalPos.y;
+                        this.smoothX = finalPos.x;
+                        this.smoothY = finalPos.y;
+                        this.x = this.tileX * TILE_SIZE;
+                        this.y = this.tileY * TILE_SIZE;
                     }
                 }
 
