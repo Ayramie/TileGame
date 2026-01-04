@@ -115,14 +115,14 @@ export class Renderer {
         ctx.fill();
 
         // Draw player character (moved up by jump height when leaping)
-        this.playerSprite.draw(ctx, screenX, screenY - 10 - jumpHeight);
+        this.playerSprite.draw(ctx, screenX, screenY - 18 - jumpHeight);
 
         // Leap trail effect while airborne
         if (player.isLeaping && jumpHeight > 20) {
             ctx.save();
             ctx.fillStyle = `rgba(100, 200, 255, ${0.3 * (jumpHeight / 80)})`;
             ctx.beginPath();
-            ctx.ellipse(screenX, screenY - 10 - jumpHeight + 15, 8, 12, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, screenY - 18 - jumpHeight + 15, 8, 12, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
@@ -136,7 +136,7 @@ export class Renderer {
             ctx.shadowColor = '#66ccff';
             ctx.shadowBlur = 10;
             ctx.beginPath();
-            ctx.ellipse(screenX, screenY - 30 - jumpHeight, 20, 24, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, screenY - 38 - jumpHeight, 20, 24, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
         }
