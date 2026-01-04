@@ -18,7 +18,7 @@ export class Player {
         this.attackCooldown = 0;
         this.attackCooldownMax = 0.5;
         this.cleaveCooldown = 0;
-        this.cleaveCooldownMax = 3;
+        this.cleaveCooldownMax = 5;
         this.isAttacking = false;
         this.attackDirection = { x: 0, y: 0 };
         this.attackTimer = 0;
@@ -51,7 +51,7 @@ export class Player {
         // Auto-attack targeting
         this.targetEnemy = null;
         this.autoAttackCooldown = 0;
-        this.autoAttackCooldownMax = 3.0;
+        this.autoAttackCooldownMax = 1.5;
         this.autoAttackRange = 2.5;
         this.pendingDamageNumber = null; // For showing damage numbers
 
@@ -395,7 +395,9 @@ export class Player {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance > 0.05) {
-            const moveDistance = this.speed * deltaTime;
+            // 50% speed penalty while charging shockwave
+            const speedMultiplier = this.shockwaveCharging ? 0.5 : 1.0;
+            const moveDistance = this.speed * speedMultiplier * deltaTime;
             let newX, newY;
 
             if (moveDistance >= distance) {
@@ -543,11 +545,7 @@ export class Player {
         // Calculate 4-way direction based on mouse position
         this.updateShockwaveDirection(screenX, screenY);
 
-        // Stop movement while charging
-        this.targetTileX = this.tileX;
-        this.targetTileY = this.tileY;
-        this.path = [];
-
+        // Can move while charging (with 50% speed penalty applied in update)
         return true;
     }
 
@@ -573,12 +571,10 @@ export class Player {
         // Update direction while charging
         this.updateShockwaveDirection(screenX, screenY);
 
-        // Calculate current tiles for telegraph
+        // Calculate current tiles for telegraph (based on current position)
         this.shockwaveTiles = this.getShockwaveTiles();
 
-        // Lock movement while charging
-        this.targetTileX = this.tileX;
-        this.targetTileY = this.tileY;
+        // Movement allowed while charging (50% speed penalty applied in update)
     }
 
     releaseShockwave() {
