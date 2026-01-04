@@ -413,16 +413,16 @@ export class Player {
             const newTileY = Math.round(newY);
             let blocked = false;
 
-            for (const enemy of enemies) {
-                if (!enemy.isAlive) continue;
-                // Allow passing through boss during bounce
-                if (enemy.currentAttack === 'BOUNCE' && enemy.attackPhase === 'execute') continue;
-
-                if (enemy.occupiesTile(newTileX, newTileY)) {
-                    blocked = true;
-                    break;
+            const isBlockedAt = (tx, ty) => {
+                for (const enemy of enemies) {
+                    if (!enemy.isAlive) continue;
+                    if (enemy.currentAttack === 'BOUNCE' && enemy.attackPhase === 'execute') continue;
+                    if (enemy.occupiesTile(tx, ty)) return true;
                 }
-            }
+                return false;
+            };
+
+            blocked = isBlockedAt(newTileX, newTileY);
 
             if (!blocked) {
                 this.x = newX;
@@ -446,8 +446,29 @@ export class Player {
                     }
                 }
             } else {
-                // Blocked by boss - calculate path around (with cooldown to prevent spam)
-                if (this.finalDestination && this.gameMapRef && this.path.length === 0 && this.pathfindCooldown <= 0) {
+                // Blocked - try sliding along the edge (move on one axis only)
+                let slid = false;
+
+                // Try moving on X axis only
+                const slideX = this.x + (dx / distance) * moveDistance;
+                const slideTileX = Math.round(slideX);
+                if (!isBlockedAt(slideTileX, this.tileY) && slideTileX !== this.tileX) {
+                    this.x = slideX;
+                    slid = true;
+                }
+
+                // Try moving on Y axis only
+                if (!slid) {
+                    const slideY = this.y + (dy / distance) * moveDistance;
+                    const slideTileY = Math.round(slideY);
+                    if (!isBlockedAt(this.tileX, slideTileY) && slideTileY !== this.tileY) {
+                        this.y = slideY;
+                        slid = true;
+                    }
+                }
+
+                // If couldn't slide, try pathfinding around
+                if (!slid && this.finalDestination && this.gameMapRef && this.path.length === 0 && this.pathfindCooldown <= 0) {
                     this.pathfindCooldown = 0.3; // Only pathfind every 0.3 seconds
                     const path = this.findPath(this.tileX, this.tileY, this.finalDestination.x, this.finalDestination.y, this.gameMapRef);
                     if (path && path.length > 0) {
@@ -461,8 +482,8 @@ export class Player {
                         this.targetTileY = this.tileY;
                         this.finalDestination = null;
                     }
-                } else if (this.path.length > 0) {
-                    // Already on a path but still blocked, stop
+                } else if (!slid && this.path.length > 0) {
+                    // Already on a path but still blocked and can't slide, stop
                     this.targetTileX = this.tileX;
                     this.targetTileY = this.tileY;
                     this.path = [];
