@@ -95,8 +95,8 @@ export class Renderer {
         ctx.ellipse(screenX, pos.y + 5, 12, 6, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw sprite
-        this.playerSprite.draw(ctx, screenX, screenY + 10, 1.5);
+        // Draw player character
+        this.playerSprite.draw(ctx, screenX, screenY + 5);
 
         // Shield visual effect
         if (player.shield > 0) {
