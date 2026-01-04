@@ -645,21 +645,36 @@ export class Player {
 
         const dirX = this.shockwaveDirection.x;
         const dirY = this.shockwaveDirection.y;
-
-        // Perpendicular direction for width
-        const perpX = -dirY;
-        const perpY = dirX;
+        const isDiagonal = dirX !== 0 && dirY !== 0;
 
         for (let d = 1; d <= length; d++) {
             // Width expands based on distance: row 1 = 1 wide, rows 2-3 = 3 wide, rows 4-5 = 5 wide, etc.
             const width = 1 + Math.floor((d - 1) / 2) * 2;
             const halfWidth = Math.floor(width / 2);
 
-            for (let w = -halfWidth; w <= halfWidth; w++) {
-                tiles.push({
-                    x: this.tileX + dirX * d + perpX * w,
-                    y: this.tileY + dirY * d + perpY * w
-                });
+            if (isDiagonal) {
+                // For diagonal directions, expand perpendicular along both axes
+                // The perpendicular to a diagonal is the other diagonal
+                const perpX = dirX;  // Same X, opposite Y movement
+                const perpY = -dirY;
+
+                for (let w = -halfWidth; w <= halfWidth; w++) {
+                    tiles.push({
+                        x: this.tileX + dirX * d + perpX * w,
+                        y: this.tileY + dirY * d + perpY * w
+                    });
+                }
+            } else {
+                // For cardinal directions, use simple perpendicular
+                const perpX = -dirY;
+                const perpY = dirX;
+
+                for (let w = -halfWidth; w <= halfWidth; w++) {
+                    tiles.push({
+                        x: this.tileX + dirX * d + perpX * w,
+                        y: this.tileY + dirY * d + perpY * w
+                    });
+                }
             }
         }
 
