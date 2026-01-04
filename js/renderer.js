@@ -391,17 +391,11 @@ export class Renderer {
         // Color based on attack type
         let baseColor;
         switch (attackName) {
-            case 'SLAM':
-                baseColor = { r: 255, g: 80, b: 80 };
-                break;
-            case 'CHARGE':
-                baseColor = { r: 255, g: 180, b: 50 };
-                break;
-            case 'CROSS':
-                baseColor = { r: 180, g: 50, b: 255 };
+            case 'WAVE':
+                baseColor = { r: 255, g: 100, b: 100 };
                 break;
             case 'SHOCKWAVE':
-                baseColor = { r: 50, g: 200, b: 255 };
+                baseColor = { r: 255, g: 180, b: 50 };
                 break;
             case 'BOUNCE':
                 baseColor = { r: 100, g: 255, b: 100 }; // Green for poison

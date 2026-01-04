@@ -83,12 +83,61 @@ export class Player {
         // Convert screen coordinates to tile coordinates
         const tile = gameMap.screenToTile(screenX, screenY);
         if (gameMap.isWalkable(tile.x, tile.y) && gameMap.isInBounds(tile.x, tile.y)) {
-            // Move directly towards target, pathfind only on collision
-            this.path = [];
             this.finalDestination = { x: tile.x, y: tile.y };
-            this.targetTileX = tile.x;
-            this.targetTileY = tile.y;
+
+            // Check if direct path is blocked by an enemy
+            let pathBlocked = false;
+            for (const enemy of this.enemies) {
+                if (!enemy.isAlive) continue;
+                if (enemy.currentAttack === 'BOUNCE' && enemy.attackPhase === 'execute') continue;
+
+                // Check if enemy is between player and destination
+                if (this.isEnemyBlockingPath(enemy, tile.x, tile.y)) {
+                    pathBlocked = true;
+                    break;
+                }
+            }
+
+            if (pathBlocked) {
+                // Find path around enemy
+                const path = this.findPath(this.tileX, this.tileY, tile.x, tile.y, gameMap);
+                if (path && path.length > 0) {
+                    this.path = path;
+                    this.pathIndex = 0;
+                    this.targetTileX = path[0].x;
+                    this.targetTileY = path[0].y;
+                } else {
+                    // No path found, try direct anyway
+                    this.path = [];
+                    this.targetTileX = tile.x;
+                    this.targetTileY = tile.y;
+                }
+            } else {
+                // Direct path is clear
+                this.path = [];
+                this.targetTileX = tile.x;
+                this.targetTileY = tile.y;
+            }
         }
+    }
+
+    isEnemyBlockingPath(enemy, destX, destY) {
+        // Simple line check - see if enemy tiles intersect the path
+        const dx = destX - this.tileX;
+        const dy = destY - this.tileY;
+        const steps = Math.max(Math.abs(dx), Math.abs(dy));
+
+        if (steps === 0) return false;
+
+        for (let i = 1; i <= steps; i++) {
+            const checkX = Math.round(this.tileX + (dx / steps) * i);
+            const checkY = Math.round(this.tileY + (dy / steps) * i);
+
+            if (enemy.occupiesTile(checkX, checkY)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     findPath(startX, startY, endX, endY, gameMap) {

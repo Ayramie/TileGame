@@ -2,45 +2,29 @@ import { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from './map.js';
 
 // Attack types with their properties
 const AttackType = {
-    SLAM: {
-        name: 'Slam',
-        damage: 30,
-        telegraphDuration: 1.3,
+    WAVE: {
+        name: 'Wave',
+        damage: 20,
+        telegraphDuration: 0.8,
         executeDuration: 0.3,
-        cooldown: 3.0,
+        cooldown: 2.0,
         range: 4
-    },
-    CHARGE: {
-        name: 'Charge',
-        damage: 25,
-        telegraphDuration: 1.0,
-        executeDuration: 0.2,
-        cooldown: 4.0,
-        range: 8
-    },
-    CROSS: {
-        name: 'Cross',
-        damage: 35,
-        telegraphDuration: 1.5,
-        executeDuration: 0.4,
-        cooldown: 5.0,
-        range: 6
     },
     SHOCKWAVE: {
         name: 'Shockwave',
-        damage: 20,
-        telegraphDuration: 0.8,
-        executeDuration: 0.2,
-        cooldown: 3.5,
-        range: 5
+        damage: 25,
+        telegraphDuration: 1.0,
+        executeDuration: 0.3,
+        cooldown: 5.0,
+        range: 3
     },
     BOUNCE: {
         name: 'Bounce',
         damage: 20,
         telegraphDuration: 0.7,
-        executeDuration: 0.8,  // Longer to animate 3 bounces
+        executeDuration: 0.8,
         cooldown: 6.0,
-        range: 10
+        range: 15
     }
 };
 
@@ -75,12 +59,16 @@ export class Enemy {
 
         // Attack system
         this.attackCooldowns = {
-            SLAM: 0,
-            CHARGE: 0,
-            CROSS: 0,
-            SHOCKWAVE: 2.0,
+            WAVE: 0,
+            SHOCKWAVE: 0,
             BOUNCE: 3.0
         };
+
+        // Tracking for smart attack selection
+        this.playerCloseTimer = 0; // How long player has been close
+        this.closeThreshold = 4; // Tiles to count as "close"
+        this.shockwaveChargeTime = 3.0; // Time close before shockwave
+        this.farThreshold = 8; // Tiles to count as "far" for bounce
         this.currentAttack = null;
         this.attackPhase = 'none'; // 'none', 'telegraph', 'execute'
         this.attackTimer = 0;
@@ -134,7 +122,7 @@ export class Enemy {
         }
 
         // Try to start an attack
-        if (this.tryStartAttack(player)) {
+        if (this.tryStartAttack(player, deltaTime)) {
             this.updateSmoothPosition(deltaTime);
             return;
         }
@@ -238,7 +226,7 @@ export class Enemy {
         }
     }
 
-    tryStartAttack(player) {
+    tryStartAttack(player, deltaTime) {
         const bossCenterX = this.tileX + this.width / 2;
         const bossCenterY = this.tileY + this.height / 2;
         const dx = player.tileX - bossCenterX;
@@ -248,17 +236,30 @@ export class Enemy {
         // Store player position for attack targeting
         this.targetPlayerTile = { x: player.tileX, y: player.tileY };
 
-        // Check each attack in priority order (BOUNCE only in phase 2)
-        const attacks = this.phase === 1
-            ? ['SLAM', 'CROSS', 'CHARGE', 'SHOCKWAVE']
-            : ['SLAM', 'CROSS', 'CHARGE', 'SHOCKWAVE', 'BOUNCE'];
+        // Track how long player has been close
+        if (distance <= this.closeThreshold) {
+            this.playerCloseTimer += deltaTime;
+        } else {
+            this.playerCloseTimer = 0;
+        }
 
-        for (const attackName of attacks) {
-            const attack = AttackType[attackName];
-            if (this.attackCooldowns[attackName] <= 0 && distance <= attack.range) {
-                this.startAttack(attackName, player);
-                return true;
-            }
+        // Priority 1: BOUNCE if player is far away (phase 2 only)
+        if (this.phase === 2 && distance >= this.farThreshold && this.attackCooldowns.BOUNCE <= 0) {
+            this.startAttack('BOUNCE', player);
+            return true;
+        }
+
+        // Priority 2: SHOCKWAVE if player has been close too long
+        if (this.playerCloseTimer >= this.shockwaveChargeTime && this.attackCooldowns.SHOCKWAVE <= 0) {
+            this.playerCloseTimer = 0;
+            this.startAttack('SHOCKWAVE', player);
+            return true;
+        }
+
+        // Priority 3: WAVE attack if in range
+        if (distance <= AttackType.WAVE.range && this.attackCooldowns.WAVE <= 0) {
+            this.startAttack('WAVE', player);
+            return true;
         }
 
         return false;
@@ -291,58 +292,41 @@ export class Enemy {
         const py = this.targetPlayerTile.y;
 
         switch (attackName) {
-            case 'SLAM':
-                // 3x3 area centered on player's position
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        tiles.push({ x: px + dx, y: py + dy });
-                    }
-                }
-                break;
+            case 'WAVE':
+                // 2x3 wave in front of boss towards player
+                const waveDirX = px - centerX;
+                const waveDirY = py - centerY;
+                const waveLen = Math.sqrt(waveDirX * waveDirX + waveDirY * waveDirY);
 
-            case 'CHARGE':
-                // Line from boss to player and beyond
-                const dirX = px - centerX;
-                const dirY = py - centerY;
-                const len = Math.sqrt(dirX * dirX + dirY * dirY);
-                if (len > 0) {
-                    const normX = dirX / len;
-                    const normY = dirY / len;
-                    for (let i = 1; i <= 8; i++) {
-                        tiles.push({
-                            x: centerX + Math.round(normX * i),
-                            y: centerY + Math.round(normY * i)
-                        });
+                if (waveLen > 0) {
+                    // Normalize direction and snap to 4-way
+                    let dirX, dirY;
+                    if (Math.abs(waveDirX) >= Math.abs(waveDirY)) {
+                        dirX = Math.sign(waveDirX);
+                        dirY = 0;
+                    } else {
+                        dirX = 0;
+                        dirY = Math.sign(waveDirY);
                     }
-                }
-                break;
 
-            case 'CROSS':
-                // + shape centered on player
-                for (let i = -3; i <= 3; i++) {
-                    if (i !== 0) {
-                        tiles.push({ x: px + i, y: py });
-                        tiles.push({ x: px, y: py + i });
-                    }
-                }
-                tiles.push({ x: px, y: py }); // Center
-                break;
+                    // Perpendicular for width
+                    const perpX = -dirY;
+                    const perpY = dirX;
 
-            case 'SHOCKWAVE':
-                // Ring around the boss (2 tiles out)
-                for (let dy = -2; dy <= this.height + 1; dy++) {
-                    for (let dx = -2; dx <= this.width + 1; dx++) {
-                        const tx = this.tileX + dx;
-                        const ty = this.tileY + dy;
-                        // Only tiles on the edge of a 6x6 area
-                        const onEdge = dx === -2 || dx === this.width + 1 ||
-                                       dy === -2 || dy === this.height + 1;
-                        if (onEdge) {
-                            tiles.push({ x: tx, y: ty });
+                    // 2 rows deep, 3 wide
+                    for (let d = 1; d <= 2; d++) {
+                        for (let w = -1; w <= 1; w++) {
+                            tiles.push({
+                                x: centerX + dirX * d + perpX * w,
+                                y: centerY + dirY * d + perpY * w
+                            });
                         }
                     }
                 }
-                // Also add one tile further ring
+                break;
+
+            case 'SHOCKWAVE':
+                // Ring around the boss (tiles adjacent to boss)
                 for (let dy = -1; dy <= this.height; dy++) {
                     for (let dx = -1; dx <= this.width; dx++) {
                         const tx = this.tileX + dx;
