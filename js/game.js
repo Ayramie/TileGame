@@ -269,9 +269,10 @@ export class Game {
                 this.puzzlePhase = 'flashing';
                 this.puzzleFlashTimer = this.puzzleFlashDuration;
                 this.puzzleFlashCount = 0;
-                // Stop pillar glow
+                // Turn all pillars white
                 for (const pillar of this.pillars) {
                     pillar.glowing = false;
+                    pillar.color = 'white';
                 }
             }
         }
@@ -298,8 +299,11 @@ export class Game {
                     pillar.justDied = true; // Mark so we only process once
 
                     if (pillar.color === this.correctColor) {
-                        // Correct pillar! Spawn boss
+                        // Correct pillar! Spawn boss and destroy all pillars
                         this.puzzlePhase = 'complete';
+                        for (const p of this.pillars) {
+                            p.isAlive = false;
+                        }
                         this.enemies.push(new Enemy(this.centerTileX - 1, this.centerTileY - 1));
                         this.player.clearTarget();
                     } else {

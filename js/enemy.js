@@ -901,6 +901,7 @@ export class Pillar {
             case 'blue': return { r: 80, g: 150, b: 255 };
             case 'green': return { r: 80, g: 255, b: 120 };
             case 'yellow': return { r: 255, g: 230, b: 80 };
+            case 'white': return { r: 255, g: 255, b: 255 };
             default: return { r: 255, g: 255, b: 255 };
         }
     }
