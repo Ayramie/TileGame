@@ -302,15 +302,15 @@ export class Game {
         // Update UI
         this.renderer.drawUI(this.player);
 
-        // Death screen overlay
-        if (!this.player.isAlive) {
-            this.renderer.drawDeathScreen();
-        }
-
         this.ctx.restore();
 
         // Draw player health bar (outside zoom transform, fixed on screen)
         this.renderer.drawPlayerHealthBar(this.player, this.combat.playerDamageNumbers);
+
+        // Death screen overlay (outside zoom transform, fixed on screen)
+        if (!this.player.isAlive) {
+            this.renderer.drawDeathScreen();
+        }
     }
 
     spawnAdds(boss) {
