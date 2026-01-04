@@ -326,14 +326,15 @@ export class Enemy {
                 break;
 
             case 'SHOCKWAVE':
-                // Ring around the boss (tiles adjacent to boss)
-                for (let dy = -1; dy <= this.height; dy++) {
-                    for (let dx = -1; dx <= this.width; dx++) {
+                // Large shockwave area around the boss (3 tiles out on all sides)
+                const shockwaveRange = 3;
+                for (let dy = -shockwaveRange; dy <= this.height - 1 + shockwaveRange; dy++) {
+                    for (let dx = -shockwaveRange; dx <= this.width - 1 + shockwaveRange; dx++) {
                         const tx = this.tileX + dx;
                         const ty = this.tileY + dy;
-                        const onEdge = dx === -1 || dx === this.width ||
-                                       dy === -1 || dy === this.height;
-                        if (onEdge) {
+                        // Exclude tiles under the boss itself
+                        const underBoss = dx >= 0 && dx < this.width && dy >= 0 && dy < this.height;
+                        if (!underBoss) {
                             tiles.push({ x: tx, y: ty });
                         }
                     }
