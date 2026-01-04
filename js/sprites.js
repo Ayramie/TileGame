@@ -1,22 +1,56 @@
 // Sprite loading and animation system
 export class SpriteSheet {
-    constructor(imagePath, frameWidth, frameHeight) {
+    constructor(imagePath, frameWidth, frameHeight, removeBackground = false) {
         this.image = new Image();
-        this.image.src = imagePath;
         this.loaded = false;
         this.frameWidth = frameWidth;
         this.frameHeight = frameHeight;
+        this.processedCanvas = null;
 
         this.image.onload = () => {
+            if (removeBackground) {
+                this.processImage();
+            }
             this.loaded = true;
         };
+        this.image.src = imagePath;
+    }
+
+    // Remove the purple/lavender background color
+    processImage() {
+        const canvas = document.createElement('canvas');
+        canvas.width = this.image.width;
+        canvas.height = this.image.height;
+        const ctx = canvas.getContext('2d');
+
+        ctx.drawImage(this.image, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // The background color is approximately RGB(150, 150, 200) - lavender/purple
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            // Check if pixel is close to the lavender background color
+            // The background appears to be around (150, 150, 200) or similar purple shade
+            if (r > 130 && r < 170 && g > 130 && g < 170 && b > 180 && b < 220) {
+                data[i + 3] = 0; // Make transparent
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        this.processedCanvas = canvas;
     }
 
     draw(ctx, frameX, frameY, destX, destY, scale = 1) {
         if (!this.loaded) return;
 
+        const source = this.processedCanvas || this.image;
+
         ctx.drawImage(
-            this.image,
+            source,
             frameX * this.frameWidth,
             frameY * this.frameHeight,
             this.frameWidth,
@@ -32,7 +66,8 @@ export class SpriteSheet {
 export class PlayerSprite {
     constructor() {
         // Blue knight character from the sprite sheet
-        this.spriteSheet = new SpriteSheet('assets/hero.png', 32, 32);
+        // Frame size is 32x32, and we need to remove the purple background
+        this.spriteSheet = new SpriteSheet('assets/hero.png', 32, 32, true);
 
         // Animation state
         this.currentFrame = 0;
@@ -41,11 +76,15 @@ export class PlayerSprite {
         this.numFrames = 4;
 
         // Direction mapping (row in sprite sheet)
-        // Based on the sprite layout: down, left, right, up
+        // Based on the blue knight layout in top-left:
+        // Row 0: facing down-left (isometric down)
+        // Row 1: facing down-right (isometric right)
+        // Row 2: facing up-left (isometric left)
+        // Row 3: facing up-right (isometric up)
         this.directions = {
             down: 0,
-            left: 1,
-            right: 2,
+            right: 1,
+            left: 2,
             up: 3
         };
         this.currentDirection = 'down';
