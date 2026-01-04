@@ -670,16 +670,14 @@ export class Player {
         const isDiagonal = dirX !== 0 && dirY !== 0;
 
         if (isDiagonal) {
-            // 7 tiles in a figure-8 / hourglass pattern
-            // Row 1 (closest): 3 tiles
-            tiles.push({ x: this.tileX + dirX, y: this.tileY });
+            // Diagonal strip - 3 wide x 2 deep along the diagonal
+            // Depth 1: 3 tiles in a diagonal line
             tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY });
-            tiles.push({ x: this.tileX, y: this.tileY + dirY });
-            // Row 2 (middle): 1 tile
+            tiles.push({ x: this.tileX + dirX + dirX, y: this.tileY + dirY });
+            tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY + dirY });
+            // Depth 2: 3 tiles in a diagonal line
             tiles.push({ x: this.tileX + dirX * 2, y: this.tileY + dirY * 2 });
-            // Row 3 (far): 3 tiles
             tiles.push({ x: this.tileX + dirX * 3, y: this.tileY + dirY * 2 });
-            tiles.push({ x: this.tileX + dirX * 3, y: this.tileY + dirY * 3 });
             tiles.push({ x: this.tileX + dirX * 2, y: this.tileY + dirY * 3 });
         } else {
             // For cardinal directions, use perpendicular expansion (3 wide, 2 deep)
