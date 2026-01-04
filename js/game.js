@@ -151,6 +151,12 @@ export class Game {
             if (enemy.shouldSpawnAdds()) {
                 this.spawnAdds(enemy);
             }
+
+            // Check for bounce damage (dealt directly by boss, not through combat system)
+            if (enemy.bounceDamageDealt) {
+                this.combat.addPlayerDamageNumber(enemy.bounceDamageDealt);
+                enemy.bounceDamageDealt = null;
+            }
         }
 
         // Update adds

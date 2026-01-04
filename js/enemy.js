@@ -428,13 +428,15 @@ export class Enemy {
                 // Transition to execute phase
                 this.attackPhase = 'execute';
                 this.attackTimer = AttackType[this.currentAttack].executeDuration;
-                this.attackHitPending = true; // Signal to deal damage
 
                 // Initialize bounce attack execute phase
                 if (this.currentAttack === 'BOUNCE') {
                     this.currentBounce = 0;
                     this.bounceProgress = 0;
                     this.bounceStartPos = { x: this.tileX, y: this.tileY };
+                    this.bounceHits = [false, false, false]; // Track which bounces have hit
+                } else {
+                    this.attackHitPending = true; // Signal to deal damage (non-BOUNCE attacks)
                 }
             }
         } else if (this.attackPhase === 'execute') {
@@ -448,48 +450,50 @@ export class Enemy {
 
                 // Check if we just landed on a new bounce
                 if (newBounce > this.currentBounce) {
-                    // Landed on a new position - spawn poison
+                    // Landed on a new position - deal damage and spawn poison
                     const landPos = this.bouncePositions[this.currentBounce];
-                    if (landPos) {
-                        // Check if player is under the landing spot
-                        if (this.playerRef) {
-                            const playerUnder = this.playerRef.tileX >= landPos.x - 1 &&
-                                               this.playerRef.tileX <= landPos.x + this.width &&
-                                               this.playerRef.tileY >= landPos.y - 1 &&
-                                               this.playerRef.tileY <= landPos.y + this.height;
+                    if (landPos && this.playerRef && !this.bounceHits[this.currentBounce]) {
+                        // Check if player is in the landing zone (2x2 boss + 1 tile border)
+                        const playerInZone = this.playerRef.tileX >= landPos.x - 1 &&
+                                            this.playerRef.tileX <= landPos.x + this.width &&
+                                            this.playerRef.tileY >= landPos.y - 1 &&
+                                            this.playerRef.tileY <= landPos.y + this.height;
 
-                            if (playerUnder) {
-                                // Push player out and deal extra damage
-                                this.playerRef.takeDamage(5);
-                                // Push away from boss center
-                                const pushDirX = this.playerRef.tileX - (landPos.x + this.width / 2);
-                                const pushDirY = this.playerRef.tileY - (landPos.y + this.height / 2);
-                                const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
-                                if (pushLen > 0) {
-                                    const pushX = Math.round(pushDirX / pushLen * 2);
-                                    const pushY = Math.round(pushDirY / pushLen * 2);
-                                    const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
-                                    const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
-                                    this.playerRef.tileX = newX;
-                                    this.playerRef.tileY = newY;
-                                    this.playerRef.x = newX;
-                                    this.playerRef.y = newY;
-                                    this.playerRef.targetTileX = newX;
-                                    this.playerRef.targetTileY = newY;
-                                }
+                        if (playerInZone) {
+                            // Deal full bounce damage
+                            this.playerRef.takeDamage(this.currentAttackDamage);
+                            this.bounceHits[this.currentBounce] = true;
+                            // Signal for damage number display
+                            this.bounceDamageDealt = this.currentAttackDamage;
+
+                            // Push player away from boss center
+                            const pushDirX = this.playerRef.tileX - (landPos.x + this.width / 2);
+                            const pushDirY = this.playerRef.tileY - (landPos.y + this.height / 2);
+                            const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
+                            if (pushLen > 0) {
+                                const pushX = Math.round(pushDirX / pushLen * 2);
+                                const pushY = Math.round(pushDirY / pushLen * 2);
+                                const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
+                                const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
+                                this.playerRef.tileX = newX;
+                                this.playerRef.tileY = newY;
+                                this.playerRef.x = newX;
+                                this.playerRef.y = newY;
+                                this.playerRef.targetTileX = newX;
+                                this.playerRef.targetTileY = newY;
                             }
                         }
+                    }
 
-                        if (this.groundHazards) {
-                            // Create poison pool at landing spot
-                            const poisonTiles = [];
-                            for (let dy = -1; dy <= this.height; dy++) {
-                                for (let dx = -1; dx <= this.width; dx++) {
-                                    poisonTiles.push({ x: landPos.x + dx, y: landPos.y + dy });
-                                }
+                    if (landPos && this.groundHazards) {
+                        // Create poison pool at landing spot
+                        const poisonTiles = [];
+                        for (let dy = -1; dy <= this.height; dy++) {
+                            for (let dx = -1; dx <= this.width; dx++) {
+                                poisonTiles.push({ x: landPos.x + dx, y: landPos.y + dy });
                             }
-                            this.groundHazards.addHazardsFromTiles(poisonTiles, 'poison', 5.0, 6);
                         }
+                        this.groundHazards.addHazardsFromTiles(poisonTiles, 'poison', 5.0, 6);
                     }
 
                     // Update start position for next bounce
@@ -523,46 +527,49 @@ export class Enemy {
                     );
                 }
 
-                // Final bounce landing poison and push
+                // Final bounce landing damage and poison
                 if (this.currentAttack === 'BOUNCE' && this.bouncePositions.length > 0) {
                     const finalPos = this.bouncePositions[2];
-                    if (finalPos) {
-                        // Check if player is under final landing spot
-                        if (this.playerRef) {
-                            const playerUnder = this.playerRef.tileX >= finalPos.x - 1 &&
-                                               this.playerRef.tileX <= finalPos.x + this.width &&
-                                               this.playerRef.tileY >= finalPos.y - 1 &&
-                                               this.playerRef.tileY <= finalPos.y + this.height;
+                    if (finalPos && this.playerRef && !this.bounceHits[2]) {
+                        // Check if player is in final landing zone
+                        const playerInZone = this.playerRef.tileX >= finalPos.x - 1 &&
+                                            this.playerRef.tileX <= finalPos.x + this.width &&
+                                            this.playerRef.tileY >= finalPos.y - 1 &&
+                                            this.playerRef.tileY <= finalPos.y + this.height;
 
-                            if (playerUnder) {
-                                this.playerRef.takeDamage(5);
-                                const pushDirX = this.playerRef.tileX - (finalPos.x + this.width / 2);
-                                const pushDirY = this.playerRef.tileY - (finalPos.y + this.height / 2);
-                                const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
-                                if (pushLen > 0) {
-                                    const pushX = Math.round(pushDirX / pushLen * 2);
-                                    const pushY = Math.round(pushDirY / pushLen * 2);
-                                    const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
-                                    const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
-                                    this.playerRef.tileX = newX;
-                                    this.playerRef.tileY = newY;
-                                    this.playerRef.x = newX;
-                                    this.playerRef.y = newY;
-                                    this.playerRef.targetTileX = newX;
-                                    this.playerRef.targetTileY = newY;
-                                }
+                        if (playerInZone) {
+                            // Deal full bounce damage
+                            this.playerRef.takeDamage(this.currentAttackDamage);
+                            this.bounceHits[2] = true;
+                            this.bounceDamageDealt = this.currentAttackDamage;
+
+                            // Push player away
+                            const pushDirX = this.playerRef.tileX - (finalPos.x + this.width / 2);
+                            const pushDirY = this.playerRef.tileY - (finalPos.y + this.height / 2);
+                            const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
+                            if (pushLen > 0) {
+                                const pushX = Math.round(pushDirX / pushLen * 2);
+                                const pushY = Math.round(pushDirY / pushLen * 2);
+                                const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
+                                const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
+                                this.playerRef.tileX = newX;
+                                this.playerRef.tileY = newY;
+                                this.playerRef.x = newX;
+                                this.playerRef.y = newY;
+                                this.playerRef.targetTileX = newX;
+                                this.playerRef.targetTileY = newY;
                             }
                         }
+                    }
 
-                        if (this.groundHazards) {
-                            const poisonTiles = [];
-                            for (let dy = -1; dy <= this.height; dy++) {
-                                for (let dx = -1; dx <= this.width; dx++) {
-                                    poisonTiles.push({ x: finalPos.x + dx, y: finalPos.y + dy });
-                                }
+                    if (finalPos && this.groundHazards) {
+                        const poisonTiles = [];
+                        for (let dy = -1; dy <= this.height; dy++) {
+                            for (let dx = -1; dx <= this.width; dx++) {
+                                poisonTiles.push({ x: finalPos.x + dx, y: finalPos.y + dy });
                             }
-                            this.groundHazards.addHazardsFromTiles(poisonTiles, 'poison', 5.0, 6);
                         }
+                        this.groundHazards.addHazardsFromTiles(poisonTiles, 'poison', 5.0, 6);
                     }
                 }
 
