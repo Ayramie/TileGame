@@ -53,8 +53,8 @@ export class Game {
     }
 
     update(deltaTime) {
-        // Update renderer animation time
-        this.renderer.update(deltaTime);
+        // Update renderer animation time (includes player sprite animation)
+        this.renderer.update(deltaTime, this.player);
 
         // Handle input (only if player is alive)
         const rawMouse = this.input.getMousePosition();

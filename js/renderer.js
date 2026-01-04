@@ -1,14 +1,19 @@
 import { ISO_TILE_WIDTH, ISO_TILE_HEIGHT, TileType, cartToIso, tileToScreenCenter } from './map.js';
+import { PlayerSprite } from './sprites.js';
 
 export class Renderer {
     constructor(canvas, ctx) {
         this.canvas = canvas;
         this.ctx = ctx;
         this.time = 0; // For animations
+        this.playerSprite = new PlayerSprite();
     }
 
-    update(deltaTime) {
+    update(deltaTime, player = null) {
         this.time += deltaTime;
+        if (player) {
+            this.playerSprite.update(deltaTime, player);
+        }
     }
 
     clear() {
@@ -65,7 +70,7 @@ export class Renderer {
         // Use smooth interpolated position (player.x/y are floats in tile units)
         const pos = tileToScreenCenter(player.x, player.y);
         const screenX = pos.x;
-        const screenY = pos.y - 10; // Lift up to stand on tile
+        const screenY = pos.y;
 
         // Draw target indicator line if player has a target
         if (targetEnemy && targetEnemy.isAlive) {
@@ -77,14 +82,12 @@ export class Renderer {
             ctx.lineWidth = 2;
             ctx.setLineDash([8, 4]);
             ctx.beginPath();
-            ctx.moveTo(screenX, screenY);
+            ctx.moveTo(screenX, screenY - 20);
             ctx.lineTo(enemyPos.x, enemyPos.y - 20);
             ctx.stroke();
             ctx.setLineDash([]);
             ctx.restore();
         }
-
-        ctx.save();
 
         // Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
@@ -92,35 +95,8 @@ export class Renderer {
         ctx.ellipse(screenX, pos.y + 5, 12, 6, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Body (oval for isometric look)
-        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 15);
-        gradient.addColorStop(0, '#6ab0ff');
-        gradient.addColorStop(0.7, '#4a90d9');
-        gradient.addColorStop(1, '#2a5a99');
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.ellipse(screenX, screenY, 12, 14, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Sword (pointing in facing direction)
-        ctx.translate(screenX, screenY);
-        ctx.rotate(player.facingAngle);
-
-        // Sword blade
-        ctx.fillStyle = '#e0e0e0';
-        ctx.beginPath();
-        ctx.moveTo(10, -2);
-        ctx.lineTo(25, 0);
-        ctx.lineTo(10, 2);
-        ctx.closePath();
-        ctx.fill();
-
-        // Sword handle
-        ctx.fillStyle = '#8b4513';
-        ctx.fillRect(5, -3, 8, 6);
-
-        ctx.restore();
+        // Draw sprite
+        this.playerSprite.draw(ctx, screenX, screenY + 10, 1.5);
 
         // Shield visual effect
         if (player.shield > 0) {
@@ -131,7 +107,7 @@ export class Renderer {
             ctx.shadowColor = '#66ccff';
             ctx.shadowBlur = 10;
             ctx.beginPath();
-            ctx.ellipse(screenX, screenY, 18, 20, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, screenY - 15, 20, 24, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
         }
