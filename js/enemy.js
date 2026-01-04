@@ -212,8 +212,8 @@ export class Enemy {
         // Don't move if very close
         if (distance < 3) return;
 
-        // In phase 2, don't move if player is far - wait for BOUNCE
-        if (this.phase === 2 && distance >= this.farThreshold) return;
+        // Don't move if player is far - wait for BOUNCE
+        if (distance >= this.farThreshold) return;
 
         // Move one tile towards player
         let moveX = 0;
@@ -255,8 +255,8 @@ export class Enemy {
             this.playerCloseTimer = 0;
         }
 
-        // Priority 1: BOUNCE if player is far away (phase 2 only)
-        if (this.phase === 2 && distance >= this.farThreshold && this.attackCooldowns.BOUNCE <= 0) {
+        // Priority 1: BOUNCE if player is far away
+        if (distance >= this.farThreshold && this.attackCooldowns.BOUNCE <= 0) {
             this.startAttack('BOUNCE', player);
             return true;
         }
