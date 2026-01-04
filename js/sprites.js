@@ -16,7 +16,7 @@ export class SpriteSheet {
         this.image.src = imagePath;
     }
 
-    // Remove the purple/lavender background color
+    // Remove the background color by sampling the top-left corner pixel
     processImage() {
         const canvas = document.createElement('canvas');
         canvas.width = this.image.width;
@@ -27,15 +27,23 @@ export class SpriteSheet {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
-        // The background color is approximately RGB(150, 150, 200) - lavender/purple
+        // Sample the background color from pixel (1,1) to avoid edge artifacts
+        const bgR = data[4];
+        const bgG = data[5];
+        const bgB = data[6];
+
+        console.log('Background color detected:', bgR, bgG, bgB);
+
+        // Remove all pixels that match the background color (with small tolerance)
+        const tolerance = 5;
         for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
             const g = data[i + 1];
             const b = data[i + 2];
 
-            // Check if pixel is close to the lavender background color
-            // The background appears to be around (150, 150, 200) or similar purple shade
-            if (r > 130 && r < 170 && g > 130 && g < 170 && b > 180 && b < 220) {
+            if (Math.abs(r - bgR) <= tolerance &&
+                Math.abs(g - bgG) <= tolerance &&
+                Math.abs(b - bgB) <= tolerance) {
                 data[i + 3] = 0; // Make transparent
             }
         }
