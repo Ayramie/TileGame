@@ -670,16 +670,16 @@ export class Player {
         const isDiagonal = dirX !== 0 && dirY !== 0;
 
         if (isDiagonal) {
-            // Triangle pattern pointing outward
-            // Depth 1: 1 tile (tip)
+            // Arrow pattern pointing away from player (wide base, narrow tip)
+            // Depth 1: 3 tiles (base near player)
             tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY });
-            // Depth 2: 2 tiles
+            tiles.push({ x: this.tileX + dirX, y: this.tileY });
+            tiles.push({ x: this.tileX, y: this.tileY + dirY });
+            // Depth 2: 2 tiles (middle)
             tiles.push({ x: this.tileX + dirX * 2, y: this.tileY + dirY });
             tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY * 2 });
-            // Depth 3: 3 tiles (base)
-            tiles.push({ x: this.tileX + dirX * 3, y: this.tileY + dirY });
+            // Depth 3: 1 tile (tip far from player)
             tiles.push({ x: this.tileX + dirX * 2, y: this.tileY + dirY * 2 });
-            tiles.push({ x: this.tileX + dirX, y: this.tileY + dirY * 3 });
         } else {
             // For cardinal directions, use perpendicular expansion (3 wide, 2 deep)
             const perpX = -dirY;
