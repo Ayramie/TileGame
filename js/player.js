@@ -85,7 +85,8 @@ export class Player {
         this.gameMapRef = gameMap;
 
         // Convert screen coordinates to tile coordinates
-        const tile = gameMap.screenToTile(screenX, screenY);
+        const tileFloat = gameMap.screenToTile(screenX, screenY);
+        const tile = { x: Math.floor(tileFloat.x), y: Math.floor(tileFloat.y) };
         if (gameMap.isWalkable(tile.x, tile.y) && gameMap.isInBounds(tile.x, tile.y)) {
             this.finalDestination = { x: tile.x, y: tile.y };
 
