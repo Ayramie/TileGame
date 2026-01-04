@@ -74,6 +74,31 @@ export class CombatSystem {
         player.shockwaveChargeTime = 0;
     }
 
+    processLeapSlam(player, enemies) {
+        if (!player.leapHitPending) return;
+        player.leapHitPending = false;
+
+        const slamTiles = player.leapSlamTiles;
+        const damage = player.leapSlamDamage;
+        const hitEnemies = new Set();
+
+        for (const enemy of enemies) {
+            if (!enemy.isAlive) continue;
+
+            for (const tile of slamTiles) {
+                if (enemy.occupiesTile(tile.x, tile.y) && !hitEnemies.has(enemy)) {
+                    hitEnemies.add(enemy);
+                    enemy.takeDamage(damage);
+                    const screenPos = tileToScreenCenter(enemy.tileX + 0.5, enemy.tileY + 0.5);
+                    this.addDamageNumber(screenPos.x, screenPos.y - 30, damage);
+                }
+            }
+        }
+
+        // Clear tiles after processing
+        player.leapSlamTiles = [];
+    }
+
     processEnemyAttacks(enemies, player) {
         for (const enemy of enemies) {
             if (!enemy.isAlive || !enemy.attackHitPending) continue;

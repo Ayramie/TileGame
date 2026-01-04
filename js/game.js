@@ -149,6 +149,17 @@ export class Game {
                 this.player.releaseShockwave();
             }
 
+            // R for leap slam (hold to aim, release to leap)
+            if (this.input.wasKeyJustPressed('r')) {
+                this.player.startLeapSlamAim(mouse.x, mouse.y);
+            }
+            if (this.input.isKeyPressed('r') && this.player.leapSlamAiming) {
+                this.player.updateLeapSlamAim(mouse.x, mouse.y);
+            }
+            if (this.input.wasKeyJustReleased('r') && this.player.leapSlamAiming) {
+                this.player.releaseLeapSlam(this.gameMap);
+            }
+
             // Update player
             this.player.update(deltaTime, this.gameMap, this.enemies);
 
@@ -190,6 +201,7 @@ export class Game {
         this.combat.processAttack(this.player, allEnemies);
         this.combat.processCleave(this.player, allEnemies);
         this.combat.processShockwave(this.player, allEnemies);
+        this.combat.processLeapSlam(this.player, allEnemies);
         this.combat.processEnemyAttacks(this.enemies, this.player);
         this.combat.processAddAttacks(this.adds, this.player);
         this.combat.update(deltaTime);
@@ -277,6 +289,9 @@ export class Game {
 
         // Draw cleave aim telegraph (while aiming)
         this.renderer.drawCleaveAimTelegraph(this.player);
+
+        // Draw leap slam telegraph (while aiming or landing)
+        this.renderer.drawLeapSlamTelegraph(this.player);
 
         // Draw attack effects (on top)
         this.renderer.drawAttackEffect(this.player);

@@ -45,8 +45,8 @@ export class GroundHazardSystem {
                 continue;
             }
 
-            // Check if player is standing in hazard
-            if (player.tileX === hazard.x && player.tileY === hazard.y) {
+            // Check if player is standing in hazard (skip if airborne)
+            if (player.tileX === hazard.x && player.tileY === hazard.y && !player.isAirborne()) {
                 hazard.tickTimer -= deltaTime;
                 if (hazard.tickTimer <= 0) {
                     hazard.tickTimer = this.tickInterval;
@@ -109,8 +109,8 @@ export class LaserHazardSystem {
                 if (laser.hitPending) {
                     laser.hitPending = false;
 
-                    // Check if player is in the laser path
-                    if (this.isPlayerInLaser(laser, player)) {
+                    // Check if player is in the laser path (skip if airborne)
+                    if (this.isPlayerInLaser(laser, player) && !player.isAirborne()) {
                         player.takeDamage(this.damage);
                         if (addDamageNumber) {
                             addDamageNumber(player.tileX, player.tileY, this.damage);

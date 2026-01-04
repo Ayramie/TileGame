@@ -75,6 +75,21 @@ export class Player {
         // Cleave aiming (hold Q to aim, release to fire)
         this.cleaveAiming = false;
         this.cleaveAimTiles = [];
+
+        // Leap Slam ability (R)
+        this.leapSlamCooldown = 0;
+        this.leapSlamCooldownMax = 10;
+        this.leapSlamDamage = 50;
+        this.leapSlamRange = 7; // max tiles
+        this.leapSlamAiming = false;
+        this.leapSlamTarget = null; // {x, y} tile coordinates
+        this.isLeaping = false;
+        this.leapProgress = 0; // 0 to 1
+        this.leapDuration = 0.4; // seconds in air
+        this.leapStartPos = null; // {x, y}
+        this.leapEndPos = null; // {x, y}
+        this.leapHitPending = false;
+        this.leapSlamTiles = []; // tiles affected by slam
     }
 
     setMoveTarget(screenX, screenY, gameMap, enemies = null) {
@@ -367,6 +382,29 @@ export class Player {
             if (this.shockwaveExplosionTimer <= 0) {
                 this.shockwaveExplosionTiles = [];
             }
+        }
+        if (this.leapSlamCooldown > 0) {
+            this.leapSlamCooldown -= deltaTime;
+        }
+
+        // Update leap slam animation
+        if (this.isLeaping) {
+            this.leapProgress += deltaTime / this.leapDuration;
+            if (this.leapProgress >= 1) {
+                // Land!
+                this.leapProgress = 1;
+                this.isLeaping = false;
+                this.x = this.leapEndPos.x;
+                this.y = this.leapEndPos.y;
+                this.tileX = Math.round(this.x);
+                this.tileY = Math.round(this.y);
+                this.targetTileX = this.tileX;
+                this.targetTileY = this.tileY;
+                this.leapHitPending = true;
+                this.leapSlamTiles = this.getLeapSlamTiles();
+                this.movementLockout = 0.2;
+            }
+            return; // Skip normal movement while leaping
         }
 
         // Update attack timers
@@ -805,6 +843,110 @@ export class Player {
         const level = this.getShockwaveChargeLevel();
         // 25% increase per level: 15, 19, 23, 29, 37, 46, 57, 72, 90
         return Math.floor(this.shockwaveDamage * Math.pow(1.25, level - 1));
+    }
+
+    // Leap Slam methods
+    startLeapSlamAim(screenX, screenY) {
+        if (this.leapSlamCooldown > 0 || this.leapSlamAiming || this.isLeaping) return false;
+        this.leapSlamAiming = true;
+        this.updateLeapSlamAim(screenX, screenY);
+        return true;
+    }
+
+    updateLeapSlamAim(screenX, screenY) {
+        if (!this.leapSlamAiming) return;
+
+        const targetTile = isoToCart(screenX, screenY);
+        let tx = targetTile.x;
+        let ty = targetTile.y;
+
+        // Calculate distance from player
+        const dx = tx - this.tileX;
+        const dy = ty - this.tileY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Clamp to max range
+        if (dist > this.leapSlamRange) {
+            const scale = this.leapSlamRange / dist;
+            tx = this.tileX + dx * scale;
+            ty = this.tileY + dy * scale;
+        }
+
+        this.leapSlamTarget = { x: tx, y: ty };
+    }
+
+    releaseLeapSlam(gameMap) {
+        if (!this.leapSlamAiming || !this.leapSlamTarget) {
+            this.cancelLeapSlamAim();
+            return false;
+        }
+
+        this.leapSlamAiming = false;
+
+        // Validate target position
+        const targetTileX = Math.round(this.leapSlamTarget.x);
+        const targetTileY = Math.round(this.leapSlamTarget.y);
+
+        if (!gameMap.isInBounds(targetTileX, targetTileY)) {
+            this.leapSlamTarget = null;
+            return false;
+        }
+
+        // Start the leap
+        this.isLeaping = true;
+        this.leapProgress = 0;
+        this.leapStartPos = { x: this.x, y: this.y };
+        this.leapEndPos = { x: targetTileX, y: targetTileY };
+        this.leapSlamCooldown = this.leapSlamCooldownMax;
+
+        // Clear movement
+        this.path = [];
+        this.targetTileX = this.tileX;
+        this.targetTileY = this.tileY;
+        this.clearTarget();
+
+        return true;
+    }
+
+    cancelLeapSlamAim() {
+        this.leapSlamAiming = false;
+        this.leapSlamTarget = null;
+    }
+
+    getLeapSlamTiles() {
+        // 3x3 area around landing position
+        const tiles = [];
+        for (let ox = -1; ox <= 1; ox++) {
+            for (let oy = -1; oy <= 1; oy++) {
+                tiles.push({
+                    x: this.tileX + ox,
+                    y: this.tileY + oy
+                });
+            }
+        }
+        return tiles;
+    }
+
+    getLeapSlamAimTiles() {
+        // Preview 3x3 area around target
+        if (!this.leapSlamTarget) return [];
+        const centerX = Math.round(this.leapSlamTarget.x);
+        const centerY = Math.round(this.leapSlamTarget.y);
+        const tiles = [];
+        for (let ox = -1; ox <= 1; ox++) {
+            for (let oy = -1; oy <= 1; oy++) {
+                tiles.push({
+                    x: centerX + ox,
+                    y: centerY + oy
+                });
+            }
+        }
+        return tiles;
+    }
+
+    // Check if player is airborne (immune to ground damage)
+    isAirborne() {
+        return this.isLeaping;
     }
 
     setTargetEnemy(enemy) {

@@ -67,13 +67,29 @@ export class Renderer {
 
         const ctx = this.ctx;
 
-        // Use smooth interpolated position, offset by 0.5 to center in tile
-        const pos = tileToScreenCenter(player.x + 0.5, player.y + 0.5);
-        const screenX = pos.x;
-        const screenY = pos.y;
+        // Calculate position - handle leap animation
+        let screenX, screenY, jumpHeight = 0;
+
+        if (player.isLeaping && player.leapStartPos && player.leapEndPos) {
+            // Interpolate position along leap arc
+            const startPos = tileToScreenCenter(player.leapStartPos.x + 0.5, player.leapStartPos.y + 0.5);
+            const endPos = tileToScreenCenter(player.leapEndPos.x + 0.5, player.leapEndPos.y + 0.5);
+
+            const t = player.leapProgress;
+            screenX = startPos.x + (endPos.x - startPos.x) * t;
+            screenY = startPos.y + (endPos.y - startPos.y) * t;
+
+            // Arc height - sine curve for smooth jump
+            jumpHeight = Math.sin(t * Math.PI) * 80;
+        } else {
+            // Use smooth interpolated position, offset by 0.5 to center in tile
+            const pos = tileToScreenCenter(player.x + 0.5, player.y + 0.5);
+            screenX = pos.x;
+            screenY = pos.y;
+        }
 
         // Draw target indicator line if player has a target
-        if (targetEnemy && targetEnemy.isAlive) {
+        if (targetEnemy && targetEnemy.isAlive && !player.isLeaping) {
             const enemyCenterX = targetEnemy.smoothX + targetEnemy.width / 2;
             const enemyCenterY = targetEnemy.smoothY + targetEnemy.height / 2;
             const enemyPos = tileToScreenCenter(enemyCenterX, enemyCenterY);
@@ -91,14 +107,25 @@ export class Renderer {
             ctx.restore();
         }
 
-        // Shadow centered under player (moved up to align with tile)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        // Shadow centered under player (smaller when jumping high)
+        const shadowScale = player.isLeaping ? Math.max(0.3, 1 - jumpHeight / 100) : 1;
+        ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * shadowScale})`;
         ctx.beginPath();
-        ctx.ellipse(screenX, screenY - 5, 12, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, screenY - 5, 12 * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw player character (moved up to appear on correct tile)
-        this.playerSprite.draw(ctx, screenX, screenY - 5);
+        // Draw player character (moved up by jump height when leaping)
+        this.playerSprite.draw(ctx, screenX, screenY - 5 - jumpHeight);
+
+        // Leap trail effect while airborne
+        if (player.isLeaping && jumpHeight > 20) {
+            ctx.save();
+            ctx.fillStyle = `rgba(100, 200, 255, ${0.3 * (jumpHeight / 80)})`;
+            ctx.beginPath();
+            ctx.ellipse(screenX, screenY - 5 - jumpHeight + 15, 8, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
 
         // Shield visual effect
         if (player.shield > 0) {
@@ -109,7 +136,7 @@ export class Renderer {
             ctx.shadowColor = '#66ccff';
             ctx.shadowBlur = 10;
             ctx.beginPath();
-            ctx.ellipse(screenX, screenY - 25, 20, 24, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, screenY - 25 - jumpHeight, 20, 24, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
         }
@@ -563,6 +590,85 @@ export class Renderer {
         }
     }
 
+    drawLeapSlamTelegraph(player) {
+        const ctx = this.ctx;
+
+        // Draw aim telegraph (while aiming)
+        if (player.leapSlamAiming && player.leapSlamTarget) {
+            const tiles = player.getLeapSlamAimTiles();
+            const pulse = Math.sin(this.time * 6) * 0.2 + 0.7;
+
+            // Draw range indicator circle
+            const playerPos = tileToScreenCenter(player.x + 0.5, player.y + 0.5);
+            ctx.save();
+            ctx.strokeStyle = `rgba(100, 200, 255, ${pulse * 0.4})`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            // Draw an ellipse representing max range (flattened for isometric)
+            ctx.ellipse(playerPos.x, playerPos.y,
+                player.leapSlamRange * ISO_TILE_WIDTH / 2,
+                player.leapSlamRange * ISO_TILE_HEIGHT / 2,
+                0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+
+            // Draw landing zone tiles
+            for (const tile of tiles) {
+                const fillColor = `rgba(100, 200, 255, ${pulse * 0.5})`;
+                const strokeColor = `rgba(150, 230, 255, ${pulse})`;
+                this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+            }
+
+            // Draw arc trajectory line
+            const targetPos = tileToScreenCenter(
+                Math.round(player.leapSlamTarget.x) + 0.5,
+                Math.round(player.leapSlamTarget.y) + 0.5
+            );
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(100, 200, 255, ${pulse * 0.6})`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(playerPos.x, playerPos.y - 20);
+
+            // Draw arc
+            const midX = (playerPos.x + targetPos.x) / 2;
+            const midY = (playerPos.y + targetPos.y) / 2 - 50; // Arc height
+            ctx.quadraticCurveTo(midX, midY, targetPos.x, targetPos.y - 20);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        // Draw landing impact effect
+        if (player.leapSlamTiles.length > 0 && player.movementLockout > 0) {
+            const progress = 1 - (player.movementLockout / 0.2);
+            const alpha = 1 - progress;
+
+            for (const tile of player.leapSlamTiles) {
+                // Impact flash
+                const fillColor = `rgba(100, 200, 255, ${alpha * 0.7})`;
+                const strokeColor = `rgba(255, 255, 255, ${alpha})`;
+                this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+
+                // Shockwave ring
+                const pos = tileToScreenCenter(tile.x, tile.y);
+                const ringRadius = 10 + progress * 20;
+
+                ctx.save();
+                ctx.strokeStyle = `rgba(100, 200, 255, ${alpha * 0.6})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y + 10, ringRadius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    }
+
     drawAttackEffect(player) {
         if (!player.isAttacking && !player.isCleaving) return;
 
@@ -746,6 +852,31 @@ export class Renderer {
             } else {
                 abilityE.classList.remove('on-cooldown');
                 abilityE.classList.remove('charging');
+                overlay.style.height = '0%';
+            }
+        }
+
+        // Leap slam cooldown
+        const abilityR = document.getElementById('ability-r');
+        if (abilityR) {
+            const overlay = abilityR.querySelector('.cooldown-overlay');
+            if (player.leapSlamCooldown > 0) {
+                abilityR.classList.add('on-cooldown');
+                const percent = (player.leapSlamCooldown / player.leapSlamCooldownMax) * 100;
+                overlay.style.height = `${percent}%`;
+            } else if (player.leapSlamAiming) {
+                // Show aiming state
+                abilityR.classList.add('charging');
+                abilityR.classList.remove('on-cooldown');
+                overlay.style.height = '0%';
+            } else if (player.isLeaping) {
+                // Show leaping state
+                abilityR.classList.add('charging');
+                abilityR.classList.remove('on-cooldown');
+                overlay.style.height = '0%';
+            } else {
+                abilityR.classList.remove('on-cooldown');
+                abilityR.classList.remove('charging');
                 overlay.style.height = '0%';
             }
         }
