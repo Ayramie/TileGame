@@ -10,6 +10,14 @@ const AttackType = {
         cooldown: 2.0,
         range: 4
     },
+    SLAM: {
+        name: 'Slam',
+        damage: 30,
+        telegraphDuration: 1.2,
+        executeDuration: 0.4,
+        cooldown: 4.0,
+        range: 5
+    },
     SHOCKWAVE: {
         name: 'Shockwave',
         damage: 25,
@@ -60,6 +68,7 @@ export class Enemy {
         // Attack system
         this.attackCooldowns = {
             WAVE: 0,
+            SLAM: 0,
             SHOCKWAVE: 0,
             BOUNCE: 3.0
         };
@@ -68,7 +77,7 @@ export class Enemy {
         this.playerCloseTimer = 0; // How long player has been close
         this.closeThreshold = 4; // Tiles to count as "close"
         this.shockwaveChargeTime = 3.0; // Time close before shockwave
-        this.farThreshold = 8; // Tiles to count as "far" for bounce
+        this.farThreshold = 5; // Tiles to count as "far" for bounce
         this.currentAttack = null;
         this.attackPhase = 'none'; // 'none', 'telegraph', 'execute'
         this.attackTimer = 0;
@@ -256,7 +265,13 @@ export class Enemy {
             return true;
         }
 
-        // Priority 3: WAVE attack if in range
+        // Priority 3: SLAM attack (medium range, leaves fire)
+        if (distance <= AttackType.SLAM.range && this.attackCooldowns.SLAM <= 0) {
+            this.startAttack('SLAM', player);
+            return true;
+        }
+
+        // Priority 4: WAVE attack if in range
         if (distance <= AttackType.WAVE.range && this.attackCooldowns.WAVE <= 0) {
             this.startAttack('WAVE', player);
             return true;
@@ -323,6 +338,24 @@ export class Enemy {
                         }
                     }
                 }
+                break;
+
+            case 'SLAM':
+                // Large cross/plus shape centered on player position
+                const slamRange = 2;
+                for (let i = -slamRange; i <= slamRange; i++) {
+                    // Horizontal line
+                    tiles.push({ x: px + i, y: py });
+                    // Vertical line
+                    if (i !== 0) {
+                        tiles.push({ x: px, y: py + i });
+                    }
+                }
+                // Add corners for a thicker cross
+                tiles.push({ x: px - 1, y: py - 1 });
+                tiles.push({ x: px + 1, y: py - 1 });
+                tiles.push({ x: px - 1, y: py + 1 });
+                tiles.push({ x: px + 1, y: py + 1 });
                 break;
 
             case 'SHOCKWAVE':
