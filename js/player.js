@@ -555,11 +555,39 @@ export class Player {
         const dx = targetTile.x - this.tileX;
         const dy = targetTile.y - this.tileY;
 
-        // Snap to 4-way direction (whichever axis is larger)
-        if (Math.abs(dx) >= Math.abs(dy)) {
-            this.shockwaveDirection = { x: Math.sign(dx) || 1, y: 0 };
-        } else {
-            this.shockwaveDirection = { x: 0, y: Math.sign(dy) || 1 };
+        // Snap to 8-way direction based on angle
+        const angle = Math.atan2(dy, dx);
+        const sector = Math.round(angle / (Math.PI / 4)); // -4 to 4, 8 sectors
+
+        // Map sector to direction
+        switch (sector) {
+            case 0:  // Right
+                this.shockwaveDirection = { x: 1, y: 0 };
+                break;
+            case 1:  // Down-right
+                this.shockwaveDirection = { x: 1, y: 1 };
+                break;
+            case 2:  // Down
+                this.shockwaveDirection = { x: 0, y: 1 };
+                break;
+            case 3:  // Down-left
+                this.shockwaveDirection = { x: -1, y: 1 };
+                break;
+            case 4:  // Left
+            case -4:
+                this.shockwaveDirection = { x: -1, y: 0 };
+                break;
+            case -3: // Up-left
+                this.shockwaveDirection = { x: -1, y: -1 };
+                break;
+            case -2: // Up
+                this.shockwaveDirection = { x: 0, y: -1 };
+                break;
+            case -1: // Up-right
+                this.shockwaveDirection = { x: 1, y: -1 };
+                break;
+            default:
+                this.shockwaveDirection = { x: 1, y: 0 };
         }
     }
 
