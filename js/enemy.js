@@ -47,7 +47,7 @@ export class Enemy {
         this.smoothY = tileY;
         this.x = tileX * TILE_SIZE;
         this.y = tileY * TILE_SIZE;
-        this.smoothSpeed = 6; // tiles per second for interpolation
+        this.smoothSpeed = 3; // tiles per second for interpolation (slower = smoother)
         this.health = 800;
         this.maxHealth = 800;
         this.isAlive = true;
@@ -63,7 +63,7 @@ export class Enemy {
         // Movement
         this.moveSpeed = 2.0; // tiles per second
         this.moveTimer = 0;
-        this.moveCooldown = 0.35; // time between moves
+        this.moveCooldown = 0.2; // time between moves (faster steps = smoother)
 
         // Attack system
         this.attackCooldowns = {
