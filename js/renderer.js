@@ -91,14 +91,14 @@ export class Renderer {
             ctx.restore();
         }
 
-        // Shadow centered under player
+        // Shadow centered under player (moved up to align with tile)
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(screenX, screenY + 5, 12, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, screenY - 5, 12, 6, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw player character
-        this.playerSprite.draw(ctx, screenX, screenY + 5);
+        // Draw player character (moved up to appear on correct tile)
+        this.playerSprite.draw(ctx, screenX, screenY - 5);
 
         // Shield visual effect
         if (player.shield > 0) {
@@ -109,7 +109,7 @@ export class Renderer {
             ctx.shadowColor = '#66ccff';
             ctx.shadowBlur = 10;
             ctx.beginPath();
-            ctx.ellipse(screenX, screenY - 15, 20, 24, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, screenY - 25, 20, 24, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
         }
@@ -752,10 +752,13 @@ export class Renderer {
     }
 
     drawCursor(mouseX, mouseY, gameMap) {
-        const tile = gameMap.screenToTile(mouseX, mouseY);
+        const tileFloat = gameMap.screenToTile(mouseX, mouseY);
+        const tileX = Math.floor(tileFloat.x);
+        const tileY = Math.floor(tileFloat.y);
 
-        if (gameMap.isInBounds(tile.x, tile.y)) {
-            this.drawIsometricTile(tile.x, tile.y, 'rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.5)');
+        if (gameMap.isInBounds(tileX, tileY)) {
+            // Highlight the tile under the mouse
+            this.drawIsometricTile(tileX, tileY, 'rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.6)');
         }
     }
 
