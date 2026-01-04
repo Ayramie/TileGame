@@ -389,6 +389,7 @@ export class Enemy {
                     const bounceDistance = 4; // Distance per bounce
 
                     this.bouncePositions = [];
+                    this.bounceTilesByZone = [[], [], []]; // Store tiles for each zone separately
 
                     for (let bounce = 1; bounce <= 3; bounce++) {
                         let landX = Math.round(centerX + bounceNormX * bounceDistance * bounce) - 1;
@@ -403,7 +404,9 @@ export class Enemy {
                         // Add landing zone tiles (2x2 boss footprint + 1 tile border for impact)
                         for (let bdy = -1; bdy <= this.height; bdy++) {
                             for (let bdx = -1; bdx <= this.width; bdx++) {
-                                tiles.push({ x: landX + bdx, y: landY + bdy });
+                                const tile = { x: landX + bdx, y: landY + bdy };
+                                tiles.push(tile);
+                                this.bounceTilesByZone[bounce - 1].push(tile);
                             }
                         }
                     }
@@ -597,12 +600,29 @@ export class Enemy {
             progress = 1;
         }
 
+        // For BOUNCE, calculate which zones should be visible during telegraph
+        let visibleBounceZones = 3;
+        let bounceTilesByZone = this.bounceTilesByZone || null;
+
+        if (this.currentAttack === 'BOUNCE' && this.attackPhase === 'telegraph') {
+            // Show zones progressively: zone 1 at 0-33%, zone 2 at 33-66%, zone 3 at 66-100%
+            if (progress < 0.33) {
+                visibleBounceZones = 1;
+            } else if (progress < 0.66) {
+                visibleBounceZones = 2;
+            } else {
+                visibleBounceZones = 3;
+            }
+        }
+
         return {
             tiles: this.attackTiles,
             phase: this.attackPhase,
             progress: progress,
             attackName: this.currentAttack,
-            bouncePositions: this.bouncePositions
+            bouncePositions: this.bouncePositions,
+            visibleBounceZones: visibleBounceZones,
+            bounceTilesByZone: bounceTilesByZone
         };
     }
 

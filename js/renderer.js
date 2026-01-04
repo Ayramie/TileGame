@@ -362,13 +362,16 @@ export class Renderer {
         if (!info) return;
 
         const ctx = this.ctx;
-        const { tiles, phase, progress, attackName } = info;
+        const { tiles, phase, progress, attackName, visibleBounceZones, bounceTilesByZone } = info;
 
         // Color based on attack type
         let baseColor;
         switch (attackName) {
             case 'WAVE':
                 baseColor = { r: 255, g: 100, b: 100 };
+                break;
+            case 'SLAM':
+                baseColor = { r: 255, g: 150, b: 50 };
                 break;
             case 'SHOCKWAVE':
                 baseColor = { r: 255, g: 180, b: 50 };
@@ -389,16 +392,40 @@ export class Renderer {
             alpha = 0.9;
         }
 
-        // Draw danger tiles as isometric diamonds
-        for (const tile of tiles) {
-            const fillColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${alpha * 0.5})`;
-            const strokeColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${alpha})`;
+        // For BOUNCE during telegraph, draw zones progressively
+        if (attackName === 'BOUNCE' && phase === 'telegraph' && bounceTilesByZone) {
+            for (let zone = 0; zone < visibleBounceZones; zone++) {
+                const zoneTiles = bounceTilesByZone[zone];
+                // Each zone flashes when it first appears
+                const zoneProgress = zone === 0 ? progress / 0.33 :
+                                    zone === 1 ? (progress - 0.33) / 0.33 :
+                                    (progress - 0.66) / 0.34;
+                const isNewZone = zoneProgress < 0.3 && zoneProgress >= 0;
+                const zoneAlpha = isNewZone ? alpha + 0.3 : alpha;
 
-            this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+                for (const tile of zoneTiles) {
+                    const fillColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${zoneAlpha * 0.5})`;
+                    const strokeColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${zoneAlpha})`;
+                    this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
 
-            // Extra flash during execute
-            if (phase === 'execute') {
-                this.drawIsometricTile(tile.x, tile.y, 'rgba(255, 255, 255, 0.3)');
+                    // Flash effect when zone appears
+                    if (isNewZone) {
+                        this.drawIsometricTile(tile.x, tile.y, `rgba(255, 255, 255, ${0.4 * (0.3 - zoneProgress) / 0.3})`);
+                    }
+                }
+            }
+        } else {
+            // Draw danger tiles as isometric diamonds (non-BOUNCE or execute phase)
+            for (const tile of tiles) {
+                const fillColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${alpha * 0.5})`;
+                const strokeColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${alpha})`;
+
+                this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+
+                // Extra flash during execute
+                if (phase === 'execute') {
+                    this.drawIsometricTile(tile.x, tile.y, 'rgba(255, 255, 255, 0.3)');
+                }
             }
         }
 
