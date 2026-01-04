@@ -70,7 +70,7 @@ export class Enemy {
             WAVE: 0,
             SLAM: 0,
             SHOCKWAVE: 0,
-            BOUNCE: 3.0
+            BOUNCE: 0
         };
 
         // Tracking for smart attack selection
@@ -211,6 +211,9 @@ export class Enemy {
 
         // Don't move if very close
         if (distance < 3) return;
+
+        // In phase 2, don't move if player is far - wait for BOUNCE
+        if (this.phase === 2 && distance >= this.farThreshold) return;
 
         // Move one tile towards player
         let moveX = 0;
