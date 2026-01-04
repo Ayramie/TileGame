@@ -336,30 +336,30 @@ export class Player {
     }
 
     updateFacingDirection(tileDx, tileDy, screenX, screenY) {
-        // For tile-based direction (attacks) - support 8 directions
-        if (tileDx !== 0 || tileDy !== 0) {
-            const angle = Math.atan2(tileDy, tileDx);
-            const segment = Math.round(angle / (Math.PI / 4)); // -4 to 4
-
-            // Map angle segment to 8 directions
-            switch (segment) {
-                case 0: this.facingTileDir = { x: 1, y: 0 }; break;      // Right
-                case 1: this.facingTileDir = { x: 1, y: 1 }; break;      // Down-Right
-                case 2: this.facingTileDir = { x: 0, y: 1 }; break;      // Down
-                case 3: this.facingTileDir = { x: -1, y: 1 }; break;     // Down-Left
-                case 4: case -4: this.facingTileDir = { x: -1, y: 0 }; break; // Left
-                case -3: this.facingTileDir = { x: -1, y: -1 }; break;   // Up-Left
-                case -2: this.facingTileDir = { x: 0, y: -1 }; break;    // Up
-                case -1: this.facingTileDir = { x: 1, y: -1 }; break;    // Up-Right
-            }
-        }
-
-        // For visual direction (screen space for sword rendering)
+        // Use screen-space direction for more intuitive aiming
         const myScreenPos = tileToScreenCenter(this.tileX, this.tileY);
         const sdx = screenX - myScreenPos.x;
         const sdy = screenY - myScreenPos.y;
+
         if (sdx !== 0 || sdy !== 0) {
             this.facingAngle = Math.atan2(sdy, sdx);
+
+            // Map screen angle to 8 tile directions
+            // Screen coords: right=0, down=PI/2, left=PI, up=-PI/2
+            const angle = this.facingAngle;
+            const segment = Math.round(angle / (Math.PI / 4));
+
+            // Map screen direction to tile direction (accounting for isometric rotation)
+            switch (segment) {
+                case 0: this.facingTileDir = { x: 1, y: -1 }; break;     // Screen Right → tile diagonal
+                case 1: this.facingTileDir = { x: 1, y: 0 }; break;      // Screen Down-Right → tile right
+                case 2: this.facingTileDir = { x: 1, y: 1 }; break;      // Screen Down → tile diagonal
+                case 3: this.facingTileDir = { x: 0, y: 1 }; break;      // Screen Down-Left → tile down
+                case 4: case -4: this.facingTileDir = { x: -1, y: 1 }; break; // Screen Left → tile diagonal
+                case -3: this.facingTileDir = { x: -1, y: 0 }; break;    // Screen Up-Left → tile left
+                case -2: this.facingTileDir = { x: -1, y: -1 }; break;   // Screen Up → tile diagonal
+                case -1: this.facingTileDir = { x: 0, y: -1 }; break;    // Screen Up-Right → tile up
+            }
         }
     }
 
