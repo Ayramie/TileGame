@@ -58,8 +58,8 @@ export class Game {
         // Handle input (only if player is alive)
         const rawMouse = this.input.getMousePosition();
         const zoom = this.input.getZoom();
-        // Get player screen position for camera
-        const playerScreen = tileToScreenCenter(this.player.x, this.player.y);
+        // Get player screen position for camera (offset by 0.5 to center in tile)
+        const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
         // Convert mouse position to world coordinates (accounting for zoom and camera)
         const mouse = {
             x: (rawMouse.x - this.canvas.width / 2) / zoom + playerScreen.x,
@@ -212,8 +212,8 @@ export class Game {
         const zoom = this.input.getZoom();
         this.renderer.clear();
 
-        // Get player screen position for camera centering
-        const playerScreen = tileToScreenCenter(this.player.x, this.player.y);
+        // Get player screen position for camera centering (offset by 0.5 to center in tile)
+        const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
 
         // Apply camera transform: center on player, then zoom
         this.ctx.save();

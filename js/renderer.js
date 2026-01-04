@@ -67,14 +67,16 @@ export class Renderer {
 
         const ctx = this.ctx;
 
-        // Use smooth interpolated position (player.x/y are floats in tile units)
-        const pos = tileToScreenCenter(player.x, player.y);
+        // Use smooth interpolated position, offset by 0.5 to center in tile
+        const pos = tileToScreenCenter(player.x + 0.5, player.y + 0.5);
         const screenX = pos.x;
         const screenY = pos.y;
 
         // Draw target indicator line if player has a target
         if (targetEnemy && targetEnemy.isAlive) {
-            const enemyPos = tileToScreenCenter(targetEnemy.smoothX + 0.5, targetEnemy.smoothY + 0.5);
+            const enemyCenterX = targetEnemy.smoothX + targetEnemy.width / 2;
+            const enemyCenterY = targetEnemy.smoothY + targetEnemy.height / 2;
+            const enemyPos = tileToScreenCenter(enemyCenterX, enemyCenterY);
             const targetPulse = Math.sin(this.time * 6) * 0.3 + 0.5;
 
             ctx.save();
@@ -89,10 +91,10 @@ export class Renderer {
             ctx.restore();
         }
 
-        // Shadow
+        // Shadow centered under player
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(screenX, pos.y + 5, 12, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, screenY + 5, 12, 6, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Draw player character
@@ -122,7 +124,8 @@ export class Renderer {
         if (!add.isAlive) return;
 
         const ctx = this.ctx;
-        const pos = tileToScreenCenter(add.smoothX, add.smoothY);
+        // Offset by 0.5 to center in tile
+        const pos = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
         const screenX = pos.x;
         const screenY = pos.y - 8;
 
