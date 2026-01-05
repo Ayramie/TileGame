@@ -259,15 +259,15 @@ export class Game {
                 this.player.activateShield();
             }
 
-            // E for shockwave (hold to charge, release to fire)
+            // E for earthquake (hold to charge, release to fire)
             if (this.input.wasKeyJustPressed('e')) {
-                this.player.startShockwaveCharge(mouse.x, mouse.y);
+                this.player.startEarthquakeCharge();
             }
-            if (this.input.isKeyPressed('e') && this.player.shockwaveCharging) {
-                this.player.updateShockwaveCharge(deltaTime, mouse.x, mouse.y);
+            if (this.input.isKeyPressed('e') && this.player.earthquakeCharging) {
+                this.player.updateEarthquakeCharge(deltaTime);
             }
-            if (this.input.wasKeyJustReleased('e') && this.player.shockwaveCharging) {
-                this.player.releaseShockwave();
+            if (this.input.wasKeyJustReleased('e') && this.player.earthquakeCharging) {
+                this.player.releaseEarthquake();
             }
 
             // R for leap slam (hold to aim, release to leap)
@@ -333,6 +333,7 @@ export class Game {
         this.combat.processCleave(this.player, allEnemies);
         this.combat.processShockwave(this.player, allEnemies);
         this.combat.processLeapSlam(this.player, allEnemies);
+        this.combat.processEarthquake(this.player, allEnemies);
         this.combat.processEnemyAttacks(this.enemies, this.player);
         this.combat.update(deltaTime);
 
@@ -519,8 +520,11 @@ export class Game {
             }
         }
 
-        // Draw shockwave telegraph (while charging)
+        // Draw shockwave telegraph (while charging) - kept for future use
         this.renderer.drawShockwaveTelegraph(this.player);
+
+        // Draw earthquake telegraph (while charging and exploding)
+        this.renderer.drawEarthquakeTelegraph(this.player);
 
         // Draw cleave aim telegraph (while aiming)
         this.renderer.drawCleaveAimTelegraph(this.player);

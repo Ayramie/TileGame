@@ -764,6 +764,87 @@ export class Renderer {
         }
     }
 
+    drawEarthquakeTelegraph(player) {
+        const ctx = this.ctx;
+
+        // Draw staged explosion effect (rings exploding outward)
+        if (player.earthquakeExploding && player.earthquakeExplosionRings.length > 0) {
+            for (const ring of player.earthquakeExplosionRings) {
+                if (!ring.exploded) continue;
+
+                // Calculate fade based on fadeTimer
+                const fadeProgress = ring.fadeTimer !== undefined ? (1 - ring.fadeTimer / 0.3) : 0;
+                const alpha = Math.max(0, 1 - fadeProgress);
+
+                for (const tile of ring.tiles) {
+                    // Brown/orange earthquake effect
+                    const fillColor = `rgba(180, 120, 60, ${alpha * 0.7})`;
+                    const strokeColor = `rgba(255, 180, 80, ${alpha})`;
+                    this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+
+                    // Extra bright flash when first exploding
+                    if (fadeProgress < 0.3) {
+                        const flashAlpha = (0.3 - fadeProgress) / 0.3;
+                        this.drawIsometricTile(tile.x, tile.y, `rgba(255, 220, 150, ${flashAlpha * 0.6})`);
+                    }
+
+                    // Draw crack/debris particles
+                    const pos = tileToScreenCenter(tile.x, tile.y);
+                    const ringRadius = 8 + fadeProgress * 12;
+
+                    ctx.save();
+                    ctx.strokeStyle = `rgba(140, 90, 40, ${alpha * 0.8})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y + 10, ringRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        }
+
+        // Draw charging telegraph
+        if (!player.earthquakeCharging && player.earthquakeTiles.length === 0) return;
+
+        const tiles = player.earthquakeTiles;
+        const chargeLevel = player.getEarthquakeChargeLevel();
+
+        // Pulsing based on charge
+        const pulse = Math.sin(this.time * 6) * 0.2 + 0.7;
+
+        // Color intensity based on charge level
+        const intensity = Math.min(1, chargeLevel / player.earthquakeMaxLevel);
+
+        for (const tile of tiles) {
+            const fillColor = `rgba(180, 120, 60, ${pulse * 0.4 * intensity})`;
+            const strokeColor = `rgba(220, 160, 80, ${pulse * intensity})`;
+            this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+        }
+
+        // Draw charge level indicator above player
+        if (player.earthquakeCharging) {
+            const pos = tileToScreenCenter(player.x, player.y);
+
+            // Charge bar background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(pos.x - 25, pos.y - 55, 50, 8);
+
+            // Charge bar fill
+            const chargePercent = player.earthquakeChargeTime / player.earthquakeMaxCharge;
+            const gradient = ctx.createLinearGradient(pos.x - 25, 0, pos.x + 25, 0);
+            gradient.addColorStop(0, '#aa6622');
+            gradient.addColorStop(1, '#ddaa44');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(pos.x - 25, pos.y - 55, 50 * chargePercent, 8);
+
+            // Level text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Lv.${chargeLevel}`, pos.x, pos.y - 60);
+        }
+    }
+
     drawCleaveAimTelegraph(player) {
         if (!player.cleaveAiming) return;
 
@@ -1027,15 +1108,15 @@ export class Renderer {
             }
         }
 
-        // Shockwave cooldown
+        // Earthquake cooldown
         const abilityE = document.getElementById('ability-e');
         if (abilityE) {
             const overlay = abilityE.querySelector('.cooldown-overlay');
-            if (player.shockwaveCooldown > 0) {
+            if (player.earthquakeCooldown > 0) {
                 abilityE.classList.add('on-cooldown');
-                const percent = (player.shockwaveCooldown / player.shockwaveCooldownMax) * 100;
+                const percent = (player.earthquakeCooldown / player.earthquakeCooldownMax) * 100;
                 overlay.style.height = `${percent}%`;
-            } else if (player.shockwaveCharging) {
+            } else if (player.earthquakeCharging) {
                 // Show charging state
                 abilityE.classList.add('charging');
                 abilityE.classList.remove('on-cooldown');

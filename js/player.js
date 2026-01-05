@@ -67,10 +67,27 @@ export class Player {
         this.shockwaveHitPending = false;
         this.shockwaveTiles = [];
 
-        // Shockwave explosion effect
+        // Shockwave explosion effect (kept for future use)
         this.shockwaveExplosionTiles = [];
         this.shockwaveExplosionTimer = 0;
         this.shockwaveExplosionDuration = 0.4;
+
+        // Earthquake ability (E) - replaces shockwave for now
+        this.earthquakeCharging = false;
+        this.earthquakeChargeTime = 0;
+        this.earthquakeMaxCharge = 1.25; // Time to reach max level 5
+        this.earthquakeChargePerLevel = 0.25; // Time per charge level
+        this.earthquakeCooldown = 0;
+        this.earthquakeCooldownMax = 8;
+        this.earthquakeDamage = 20;
+        this.earthquakeTiles = []; // Current tiles for telegraph
+        this.earthquakeHitPending = false;
+
+        // Earthquake staged explosion effect
+        this.earthquakeExploding = false;
+        this.earthquakeExplosionRings = []; // Array of {tiles, timer}
+        this.earthquakeExplosionDelay = 0.1; // Delay between each ring
+        this.earthquakeMaxLevel = 5;
 
         // Cleave aiming (hold Q to aim, release to fire)
         this.cleaveAiming = false;
@@ -392,6 +409,12 @@ export class Player {
                 this.shockwaveExplosionTiles = [];
             }
         }
+        if (this.earthquakeCooldown > 0) {
+            this.earthquakeCooldown -= deltaTime;
+        }
+        // Update earthquake staged explosion
+        this.updateEarthquakeExplosion(deltaTime);
+
         if (this.leapSlamCooldown > 0) {
             this.leapSlamCooldown -= deltaTime;
         }
@@ -532,8 +555,8 @@ export class Player {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance > 0.05) {
-            // 50% speed penalty while charging shockwave
-            const speedMultiplier = this.shockwaveCharging ? 0.5 : 1.0;
+            // 50% speed penalty while charging earthquake
+            const speedMultiplier = this.earthquakeCharging ? 0.5 : 1.0;
             const moveDistance = this.speed * speedMultiplier * deltaTime;
             let newX, newY;
 
@@ -852,6 +875,129 @@ export class Player {
         const level = this.getShockwaveChargeLevel();
         // 25% increase per level: 15, 19, 23, 29, 37, 46, 57, 72, 90
         return Math.floor(this.shockwaveDamage * Math.pow(1.25, level - 1));
+    }
+
+    // ========== EARTHQUAKE ABILITY ==========
+
+    startEarthquakeCharge() {
+        if (this.earthquakeCooldown > 0 || this.earthquakeCharging || this.earthquakeExploding) return false;
+
+        this.earthquakeCharging = true;
+        this.earthquakeChargeTime = 0;
+        this.earthquakeTiles = this.getEarthquakeTiles();
+        return true;
+    }
+
+    updateEarthquakeCharge(deltaTime) {
+        if (!this.earthquakeCharging) return;
+
+        this.earthquakeChargeTime = Math.min(this.earthquakeChargeTime + deltaTime, this.earthquakeMaxCharge);
+        this.earthquakeTiles = this.getEarthquakeTiles();
+    }
+
+    releaseEarthquake() {
+        if (!this.earthquakeCharging) return false;
+
+        this.earthquakeCharging = false;
+
+        // Only fire if we charged at least a little
+        if (this.earthquakeChargeTime >= this.earthquakeChargePerLevel * 0.5) {
+            const level = this.getEarthquakeChargeLevel();
+            this.earthquakeCooldown = this.earthquakeCooldownMax;
+            this.movementLockout = 0.3 + level * 0.1; // Longer lockout for bigger quakes
+
+            // Set up staged explosion - one ring per level
+            this.earthquakeExploding = true;
+            this.earthquakeExplosionRings = [];
+
+            for (let ring = 1; ring <= level; ring++) {
+                const ringTiles = this.getEarthquakeRing(ring);
+                this.earthquakeExplosionRings.push({
+                    tiles: ringTiles,
+                    timer: ring * this.earthquakeExplosionDelay, // Stagger each ring
+                    exploded: false
+                });
+            }
+
+            return true;
+        }
+
+        this.earthquakeTiles = [];
+        return false;
+    }
+
+    cancelEarthquake() {
+        this.earthquakeCharging = false;
+        this.earthquakeChargeTime = 0;
+        this.earthquakeTiles = [];
+    }
+
+    getEarthquakeChargeLevel() {
+        return Math.min(this.earthquakeMaxLevel, Math.floor(this.earthquakeChargeTime / this.earthquakeChargePerLevel) + 1);
+    }
+
+    getEarthquakeTiles() {
+        const level = this.getEarthquakeChargeLevel();
+        const tiles = [];
+
+        // Square rings around player, expanding with level
+        for (let ring = 1; ring <= level; ring++) {
+            const ringTiles = this.getEarthquakeRing(ring);
+            tiles.push(...ringTiles);
+        }
+
+        return tiles;
+    }
+
+    getEarthquakeRing(ring) {
+        const tiles = [];
+        // Create a square ring at distance 'ring' from player
+        for (let x = -ring; x <= ring; x++) {
+            for (let y = -ring; y <= ring; y++) {
+                // Only include tiles on the edge of the ring (not inner tiles)
+                if (Math.abs(x) === ring || Math.abs(y) === ring) {
+                    tiles.push({
+                        x: this.tileX + x,
+                        y: this.tileY + y
+                    });
+                }
+            }
+        }
+        return tiles;
+    }
+
+    updateEarthquakeExplosion(deltaTime) {
+        if (!this.earthquakeExploding) return;
+
+        let allExploded = true;
+
+        for (const ring of this.earthquakeExplosionRings) {
+            if (!ring.exploded) {
+                ring.timer -= deltaTime;
+                if (ring.timer <= 0) {
+                    ring.exploded = true;
+                    ring.hitPending = true; // Mark for damage processing
+                } else {
+                    allExploded = false;
+                }
+            }
+        }
+
+        if (allExploded) {
+            // Keep explosion visible for a bit after last ring
+            this.earthquakeExplosionRings = this.earthquakeExplosionRings.filter(r => {
+                r.fadeTimer = (r.fadeTimer || 0.3) - deltaTime;
+                return r.fadeTimer > 0;
+            });
+
+            if (this.earthquakeExplosionRings.length === 0) {
+                this.earthquakeExploding = false;
+            }
+        }
+    }
+
+    getEarthquakeDamage() {
+        return this.earthquakeDamage;
     }
 
     // Leap Slam methods

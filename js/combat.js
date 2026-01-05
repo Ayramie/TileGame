@@ -99,6 +99,32 @@ export class CombatSystem {
         player.leapSlamTiles = [];
     }
 
+    processEarthquake(player, enemies) {
+        if (!player.earthquakeExploding) return;
+
+        const damage = player.getEarthquakeDamage();
+
+        for (const ring of player.earthquakeExplosionRings) {
+            if (!ring.hitPending) continue;
+            ring.hitPending = false;
+
+            const hitEnemies = new Set();
+
+            for (const enemy of enemies) {
+                if (!enemy.isAlive) continue;
+
+                for (const tile of ring.tiles) {
+                    if (enemy.occupiesTile(tile.x, tile.y) && !hitEnemies.has(enemy)) {
+                        hitEnemies.add(enemy);
+                        enemy.takeDamage(damage);
+                        const screenPos = tileToScreenCenter(enemy.tileX + 0.5, enemy.tileY + 0.5);
+                        this.addDamageNumber(screenPos.x, screenPos.y - 30, damage);
+                    }
+                }
+            }
+        }
+    }
+
     processEnemyAttacks(enemies, player) {
         for (const enemy of enemies) {
             if (!enemy.isAlive || !enemy.attackHitPending) continue;
