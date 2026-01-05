@@ -746,14 +746,19 @@ export class Add {
 
         // Check if in melee range to attack (adjacent tile)
         const meleeRange = Math.abs(dx) + Math.abs(dy);
-        if (meleeRange <= 1 && this.attackCooldown <= 0 && player.isAlive) {
-            // Simple lock-on hit
-            player.takeDamage(this.attackDamage);
-            this.attackCooldown = this.attackCooldownMax;
-            this.lastDamageDealt = this.attackDamage; // For damage number display
+        if (meleeRange <= 1) {
+            // In range - attack if off cooldown, but don't move
+            if (this.attackCooldown <= 0 && player.isAlive) {
+                player.takeDamage(this.attackDamage);
+                this.attackCooldown = this.attackCooldownMax;
+                this.lastDamageDealt = this.attackDamage;
+            }
+            // Stay in place
+            this.updateSmoothPosition(deltaTime);
+            return;
         }
 
-        // Movement towards player
+        // Only move if not in melee range
         this.updateMovement(deltaTime, player, gameMap, allAdds);
         this.updateSmoothPosition(deltaTime);
     }
