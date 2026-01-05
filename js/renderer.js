@@ -1939,12 +1939,12 @@ export class Renderer {
 
     drawTree(x, y, scale, variant) {
         const ctx = this.ctx;
-        const baseY = y - 5;
+        const baseY = y - 15;
 
         // Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
         ctx.beginPath();
-        ctx.ellipse(x, y + 2, 12 * scale, 6 * scale, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, y - 8, 12 * scale, 6 * scale, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Trunk
