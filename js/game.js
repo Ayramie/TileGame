@@ -376,42 +376,17 @@ export class Game {
                 this.player.clearTarget();
             }
 
-            // Q for cleave - instant if in range of target, otherwise queues for next auto
+            // Q for cleave - hold to aim at cursor, release to fire
             if (this.input.wasKeyJustPressed('q')) {
-                if (this.player.cleaveCooldown <= 0) {
-                    // Check if we have a target in range
-                    if (this.player.targetEnemy && this.player.targetEnemy.isAlive) {
-                        const enemyCenterX = this.player.targetEnemy.tileX + this.player.targetEnemy.width / 2;
-                        const enemyCenterY = this.player.targetEnemy.tileY + this.player.targetEnemy.height / 2;
-                        const dx = enemyCenterX - this.player.tileX;
-                        const dy = enemyCenterY - this.player.tileY;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-
-                        if (dist <= this.player.autoAttackRange) {
-                            // In range - cleave immediately toward target
-                            const screenPos = tileToScreenCenter(enemyCenterX, enemyCenterY);
-                            this.player.updateFacingDirection(dx, dy, screenPos.x, screenPos.y);
-                            this.player.isCleaving = true;
-                            this.player.cleaveTimer = this.player.cleaveDuration;
-                            this.player.cleaveHitPending = true;
-                            this.player.cleaveCooldown = this.player.cleaveCooldownMax;
-                            this.player.cleaveReady = false;
-                            this.sound.playBuff();
-                        } else {
-                            // Out of range - queue it
-                            this.player.cleaveReady = !this.player.cleaveReady;
-                            if (this.player.cleaveReady) {
-                                this.sound.playBuff();
-                            }
-                        }
-                    } else {
-                        // No target - just toggle
-                        this.player.cleaveReady = !this.player.cleaveReady;
-                        if (this.player.cleaveReady) {
-                            this.sound.playBuff();
-                        }
-                    }
+                if (this.player.startCleaveAim(mouse.x, mouse.y)) {
+                    this.sound.playBuff();
                 }
+            }
+            if (this.input.isKeyPressed('q') && this.player.cleaveAiming) {
+                this.player.updateCleaveAim(mouse.x, mouse.y);
+            }
+            if (this.input.wasKeyJustReleased('q') && this.player.cleaveAiming) {
+                this.player.releaseCleave();
             }
 
             // W for blade storm (hold to spin, release to shoot disk)
