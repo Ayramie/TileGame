@@ -711,7 +711,7 @@ export class Add {
         // Attack
         this.attackCooldown = 0;
         this.attackCooldownMax = 1.5;
-        this.attackDamage = 8;
+        this.attackDamage = 1; // Low for testing
         this.attackPhase = 'none';
         this.attackTimer = 0;
         this.telegraphDuration = 0.5;
@@ -782,41 +782,60 @@ export class Add {
         const dx = player.tileX - this.tileX;
         const dy = player.tileY - this.tileY;
 
-        // Move one tile towards player
-        let moveX = 0;
-        let moveY = 0;
+        // Helper to check if a tile is blocked
+        const isBlocked = (tx, ty) => {
+            if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return true;
+            if (!gameMap.isWalkable(tx, ty)) return true;
+            if (player.tileX === tx && player.tileY === ty) return true;
+            for (const other of allAdds) {
+                if (other === this || !other.isAlive) continue;
+                if (other.tileX === tx && other.tileY === ty) return true;
+            }
+            return false;
+        };
 
-        if (Math.abs(dx) > Math.abs(dy)) {
-            moveX = Math.sign(dx);
-        } else if (dy !== 0) {
-            moveY = Math.sign(dy);
-        }
+        // Build list of movement options, prioritized by how much they reduce distance to player
+        const options = [
+            { x: Math.sign(dx), y: 0 },           // Horizontal towards player
+            { x: 0, y: Math.sign(dy) },           // Vertical towards player
+            { x: Math.sign(dx), y: Math.sign(dy) }, // Diagonal towards player
+            { x: 0, y: Math.sign(dy) || 1 },      // Vertical (any)
+            { x: 0, y: Math.sign(dy) || -1 },
+            { x: Math.sign(dx) || 1, y: 0 },      // Horizontal (any)
+            { x: Math.sign(dx) || -1, y: 0 },
+            { x: 1, y: 1 }, { x: 1, y: -1 },      // All diagonals
+            { x: -1, y: 1 }, { x: -1, y: -1 }
+        ].filter(o => o.x !== 0 || o.y !== 0);
 
-        const newTileX = this.tileX + moveX;
-        const newTileY = this.tileY + moveY;
-
-        // Check if tile is valid
-        if (newTileX < 0 || newTileX >= MAP_WIDTH ||
-            newTileY < 0 || newTileY >= MAP_HEIGHT ||
-            !gameMap.isWalkable(newTileX, newTileY)) {
-            return;
-        }
-
-        // Check if player is on the target tile
-        if (player.tileX === newTileX && player.tileY === newTileY) {
-            return;
-        }
-
-        // Check if another add is on the target tile
-        for (const other of allAdds) {
-            if (other === this || !other.isAlive) continue;
-            if (other.tileX === newTileX && other.tileY === newTileY) {
-                return;
+        // Remove duplicates
+        const seen = new Set();
+        const uniqueOptions = [];
+        for (const opt of options) {
+            const key = `${opt.x},${opt.y}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueOptions.push(opt);
             }
         }
 
-        this.tileX = newTileX;
-        this.tileY = newTileY;
+        // Sort by distance to player after move
+        uniqueOptions.sort((a, b) => {
+            const distA = Math.abs(player.tileX - (this.tileX + a.x)) + Math.abs(player.tileY - (this.tileY + a.y));
+            const distB = Math.abs(player.tileX - (this.tileX + b.x)) + Math.abs(player.tileY - (this.tileY + b.y));
+            return distA - distB;
+        });
+
+        // Try each option until one works
+        for (const opt of uniqueOptions) {
+            const newTileX = this.tileX + opt.x;
+            const newTileY = this.tileY + opt.y;
+
+            if (!isBlocked(newTileX, newTileY)) {
+                this.tileX = newTileX;
+                this.tileY = newTileY;
+                return;
+            }
+        }
     }
 
     startAttack(player) {
