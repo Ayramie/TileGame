@@ -764,6 +764,11 @@ export class Add {
 
         // Stun state
         this.stunDuration = 0;
+
+        // Repositioning during combat
+        this.repositionTimer = 0;
+        this.repositionCooldown = 2.0; // Check every 2 seconds
+        this.repositionChance = 0.3; // 30% chance to reposition
     }
 
     get isStunned() {
@@ -774,8 +779,9 @@ export class Add {
         this.stunDuration = Math.max(this.stunDuration, duration);
     }
 
-    update(deltaTime, player, gameMap, allAdds = []) {
+    update(deltaTime, player, gameMap, allAdds = [], scenery = []) {
         if (!this.isAlive) return;
+        this.scenery = scenery;
 
         // Death animation
         if (this.isDying) {
@@ -835,7 +841,16 @@ export class Add {
                 this.attackCooldown = this.attackCooldownMax;
                 this.lastDamageDealt = this.attackDamage;
             }
-            // Stay in place
+
+            // Occasionally try to reposition to a different adjacent tile
+            this.repositionTimer -= deltaTime;
+            if (this.repositionTimer <= 0 && hasArrived) {
+                this.repositionTimer = this.repositionCooldown;
+                if (Math.random() < this.repositionChance) {
+                    this.tryReposition(player, gameMap, allAdds);
+                }
+            }
+
             this.updateSmoothPosition(deltaTime);
             return;
         }
@@ -876,6 +891,8 @@ export class Add {
             if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return true;
             if (!gameMap.isWalkable(tx, ty)) return true;
             if (player.tileX === tx && player.tileY === ty) return true;
+            // Check scenery blocking
+            if (this.scenery && this.scenery.some(s => s.blocking && s.x === tx && s.y === ty)) return true;
             for (const other of allAdds) {
                 if (other === this || !other.isAlive) continue;
                 if (other.tileX === tx && other.tileY === ty) return true;
@@ -985,6 +1002,40 @@ export class Add {
                 this.tileY = newTileY;
                 return;
             }
+        }
+    }
+
+    tryReposition(player, gameMap, allAdds) {
+        // Find all adjacent tiles to player
+        const adjacentToPlayer = [
+            { x: player.tileX + 1, y: player.tileY },
+            { x: player.tileX - 1, y: player.tileY },
+            { x: player.tileX, y: player.tileY + 1 },
+            { x: player.tileX, y: player.tileY - 1 },
+            { x: player.tileX + 1, y: player.tileY + 1 },
+            { x: player.tileX + 1, y: player.tileY - 1 },
+            { x: player.tileX - 1, y: player.tileY + 1 },
+            { x: player.tileX - 1, y: player.tileY - 1 }
+        ];
+
+        // Filter to only open spots (not our current position)
+        const openSpots = adjacentToPlayer.filter(spot => {
+            if (spot.x === this.tileX && spot.y === this.tileY) return false;
+            if (!gameMap.isWalkable(spot.x, spot.y)) return false;
+            // Check scenery blocking
+            if (this.scenery && this.scenery.some(s => s.blocking && s.x === spot.x && s.y === spot.y)) return false;
+            for (const other of allAdds) {
+                if (other === this || !other.isAlive) continue;
+                if (other.tileX === spot.x && other.tileY === spot.y) return false;
+            }
+            return true;
+        });
+
+        if (openSpots.length > 0) {
+            // Pick a random open spot
+            const newSpot = openSpots[Math.floor(Math.random() * openSpots.length)];
+            this.tileX = newSpot.x;
+            this.tileY = newSpot.y;
         }
     }
 
@@ -1098,6 +1149,11 @@ export class GreaterSlime {
         // For respawn tracking
         this.spawnX = tileX;
         this.spawnY = tileY;
+
+        // Repositioning during combat
+        this.repositionTimer = 0;
+        this.repositionCooldown = 2.5; // Slower than regular slimes
+        this.repositionChance = 0.25; // 25% chance to reposition
     }
 
     get isStunned() {
@@ -1108,8 +1164,9 @@ export class GreaterSlime {
         this.stunDuration = Math.max(this.stunDuration, duration);
     }
 
-    update(deltaTime, player, gameMap, allAdds = []) {
+    update(deltaTime, player, gameMap, allAdds = [], scenery = []) {
         if (!this.isAlive) return;
+        this.scenery = scenery;
 
         // Death animation
         if (this.isDying) {
@@ -1166,6 +1223,16 @@ export class GreaterSlime {
                 this.attackCooldown = this.attackCooldownMax;
                 this.lastDamageDealt = this.attackDamage;
             }
+
+            // Occasionally try to reposition to a different adjacent tile
+            this.repositionTimer -= deltaTime;
+            if (this.repositionTimer <= 0 && hasArrived) {
+                this.repositionTimer = this.repositionCooldown;
+                if (Math.random() < this.repositionChance) {
+                    this.tryReposition(player, gameMap, allAdds);
+                }
+            }
+
             this.updateSmoothPosition(deltaTime);
             return;
         }
@@ -1201,6 +1268,8 @@ export class GreaterSlime {
             if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return true;
             if (!gameMap.isWalkable(tx, ty)) return true;
             if (player.tileX === tx && player.tileY === ty) return true;
+            // Check scenery blocking
+            if (this.scenery && this.scenery.some(s => s.blocking && s.x === tx && s.y === ty)) return true;
             for (const other of allAdds) {
                 if (other === this || !other.isAlive) continue;
                 if (other.tileX === tx && other.tileY === ty) return true;
@@ -1309,6 +1378,40 @@ export class GreaterSlime {
                 this.tileY = newTileY;
                 return;
             }
+        }
+    }
+
+    tryReposition(player, gameMap, allAdds) {
+        // Find all adjacent tiles to player
+        const adjacentToPlayer = [
+            { x: player.tileX + 1, y: player.tileY },
+            { x: player.tileX - 1, y: player.tileY },
+            { x: player.tileX, y: player.tileY + 1 },
+            { x: player.tileX, y: player.tileY - 1 },
+            { x: player.tileX + 1, y: player.tileY + 1 },
+            { x: player.tileX + 1, y: player.tileY - 1 },
+            { x: player.tileX - 1, y: player.tileY + 1 },
+            { x: player.tileX - 1, y: player.tileY - 1 }
+        ];
+
+        // Filter to only open spots (not our current position)
+        const openSpots = adjacentToPlayer.filter(spot => {
+            if (spot.x === this.tileX && spot.y === this.tileY) return false;
+            if (!gameMap.isWalkable(spot.x, spot.y)) return false;
+            // Check scenery blocking
+            if (this.scenery && this.scenery.some(s => s.blocking && s.x === spot.x && s.y === spot.y)) return false;
+            for (const other of allAdds) {
+                if (other === this || !other.isAlive) continue;
+                if (other.tileX === spot.x && other.tileY === spot.y) return false;
+            }
+            return true;
+        });
+
+        if (openSpots.length > 0) {
+            // Pick a random open spot
+            const newSpot = openSpots[Math.floor(Math.random() * openSpots.length)];
+            this.tileX = newSpot.x;
+            this.tileY = newSpot.y;
         }
     }
 

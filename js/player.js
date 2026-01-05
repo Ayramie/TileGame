@@ -152,17 +152,23 @@ export class Player {
         this.lastY = tileY;
     }
 
-    setMoveTarget(screenX, screenY, gameMap, enemies = null) {
+    setMoveTarget(screenX, screenY, gameMap, enemies = null, scenery = []) {
         // Can't move while locked out from attacking
         if (this.movementLockout > 0) return;
 
         if (enemies) this.enemies = enemies;
         this.gameMapRef = gameMap;
+        this.scenery = scenery;
+
+        // Helper to check if scenery blocks a tile
+        const isSceneryBlocking = (tx, ty) => {
+            return scenery.some(s => s.blocking && s.x === tx && s.y === ty);
+        };
 
         // Convert screen coordinates to tile coordinates
         const tileFloat = gameMap.screenToTile(screenX, screenY);
         const tile = { x: Math.floor(tileFloat.x), y: Math.floor(tileFloat.y) };
-        if (gameMap.isWalkable(tile.x, tile.y) && gameMap.isInBounds(tile.x, tile.y)) {
+        if (gameMap.isWalkable(tile.x, tile.y) && gameMap.isInBounds(tile.x, tile.y) && !isSceneryBlocking(tile.x, tile.y)) {
             this.finalDestination = { x: tile.x, y: tile.y };
 
             // Check if direct path is blocked by an enemy
@@ -269,6 +275,11 @@ export class Player {
                 if (closedSet.has(neighborKey)) continue;
                 if (!gameMap.isInBounds(nx, ny)) continue;
                 if (!gameMap.isWalkable(nx, ny)) continue;
+
+                // Check if blocked by scenery
+                if (this.scenery && this.scenery.some(s => s.blocking && s.x === nx && s.y === ny)) {
+                    continue;
+                }
 
                 // Check if blocked by enemy (unless it's the destination)
                 let blockedByEnemy = false;

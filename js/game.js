@@ -287,7 +287,7 @@ export class Game {
             if (this.input.consumeLeftClick()) {
                 // Pass enemies, adds, and greater slimes for collision detection
                 const allBlockers = [...this.enemies, ...this.adds, ...this.greaterSlimes];
-                this.player.setMoveTarget(mouse.x, mouse.y, this.gameMap, allBlockers);
+                this.player.setMoveTarget(mouse.x, mouse.y, this.gameMap, allBlockers, this.scenery);
             }
 
             // Right click to attack or target enemy
@@ -601,7 +601,7 @@ export class Game {
             const wasDying = add.isDying;
             const oldDeathTimer = add.deathTimer;
 
-            add.update(scaledDelta, this.player, this.gameMap, allMobs);
+            add.update(scaledDelta, this.player, this.gameMap, allMobs, this.scenery);
 
             // Spawn death particles when death just started
             if (add.isDying && oldDeathTimer === 0 && !add.deathParticlesSpawned) {
@@ -625,7 +625,7 @@ export class Game {
         for (const greater of this.greaterSlimes) {
             const oldDeathTimer = greater.deathTimer;
 
-            greater.update(scaledDelta, this.player, this.gameMap, allMobs);
+            greater.update(scaledDelta, this.player, this.gameMap, allMobs, this.scenery);
 
             // Spawn death particles when death just started
             if (greater.isDying && oldDeathTimer === 0 && !greater.deathParticlesSpawned) {
@@ -1017,10 +1017,18 @@ export class Game {
         const minDist = 4; // Minimum distance from player start
         const margin = 3; // Stay away from edges
 
+        // Helper to check if a tile has blocking scenery
+        const isBlockedByScenery = (x, y) => {
+            return this.scenery.some(s => s.blocking && s.x === x && s.y === y);
+        };
+
         // Generate random positions for regular slimes
         while (spawnPositions.length < 10) {
             const x = margin + Math.floor(Math.random() * (MAP_WIDTH - margin * 2));
             const y = margin + Math.floor(Math.random() * (MAP_HEIGHT - margin * 2));
+
+            // Skip if blocked by scenery
+            if (isBlockedByScenery(x, y)) continue;
 
             // Check distance from player start (5, 5)
             const dx = x - 5;
@@ -1057,6 +1065,9 @@ export class Game {
         while (greaterPositions.length < 2) {
             const x = margin + Math.floor(Math.random() * (MAP_WIDTH - margin * 2));
             const y = margin + Math.floor(Math.random() * (MAP_HEIGHT - margin * 2));
+
+            // Skip if blocked by scenery
+            if (isBlockedByScenery(x, y)) continue;
 
             const dx = x - 5;
             const dy = y - 5;
