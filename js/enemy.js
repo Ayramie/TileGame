@@ -708,16 +708,14 @@ export class Add {
         this.moveTimer = 0;
         this.moveCooldown = 0.35; // Slightly slower movement for smoother look
 
-        // Attack
+        // Attack - simple auto-attack
         this.attackCooldown = 0;
-        this.attackCooldownMax = 1.5;
+        this.attackCooldownMax = 3.0; // 3 second cooldown
         this.attackDamage = 1; // Low for testing
-        this.attackPhase = 'none';
-        this.attackTimer = 0;
-        this.telegraphDuration = 0.5;
-        this.executeDuration = 0.2;
-        this.attackTile = null;
-        this.attackHitPending = false;
+
+        // Aggro
+        this.aggroRange = 3; // Only chase player within this range
+        this.isAggroed = false;
     }
 
     update(deltaTime, player, gameMap, allAdds = []) {
@@ -730,22 +728,29 @@ export class Add {
             this.attackCooldown -= deltaTime;
         }
 
-        // Handle current attack
-        if (this.attackPhase !== 'none') {
-            this.updateAttack(deltaTime);
+        // Check distance to player
+        const dx = player.tileX - this.tileX;
+        const dy = player.tileY - this.tileY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Aggro check - once aggroed, stay aggroed forever
+        if (!this.isAggroed && dist <= this.aggroRange) {
+            this.isAggroed = true;
+        }
+
+        // Only act if aggroed
+        if (!this.isAggroed) {
             this.updateSmoothPosition(deltaTime);
             return;
         }
 
-        // Check if in melee range to attack
-        const dx = player.tileX - this.tileX;
-        const dy = player.tileY - this.tileY;
-        const dist = Math.abs(dx) + Math.abs(dy);
-
-        if (dist <= 1 && this.attackCooldown <= 0) {
-            this.startAttack(player);
-            this.updateSmoothPosition(deltaTime);
-            return;
+        // Check if in melee range to attack (adjacent tile)
+        const meleeRange = Math.abs(dx) + Math.abs(dy);
+        if (meleeRange <= 1 && this.attackCooldown <= 0 && player.isAlive) {
+            // Simple lock-on hit
+            player.takeDamage(this.attackDamage);
+            this.attackCooldown = this.attackCooldownMax;
+            this.lastDamageDealt = this.attackDamage; // For damage number display
         }
 
         // Movement towards player
@@ -836,45 +841,6 @@ export class Add {
                 return;
             }
         }
-    }
-
-    startAttack(player) {
-        this.attackPhase = 'telegraph';
-        this.attackTimer = this.telegraphDuration;
-        this.attackTile = { x: player.tileX, y: player.tileY };
-        this.attackCooldown = this.attackCooldownMax;
-    }
-
-    updateAttack(deltaTime) {
-        this.attackTimer -= deltaTime;
-
-        if (this.attackPhase === 'telegraph') {
-            if (this.attackTimer <= 0) {
-                this.attackPhase = 'execute';
-                this.attackTimer = this.executeDuration;
-                this.attackHitPending = true;
-            }
-        } else if (this.attackPhase === 'execute') {
-            if (this.attackTimer <= 0) {
-                this.attackPhase = 'none';
-                this.attackTile = null;
-            }
-        }
-    }
-
-    getTelegraphInfo() {
-        if (this.attackPhase === 'none' || !this.attackTile) return null;
-
-        return {
-            tiles: [this.attackTile],
-            phase: this.attackPhase,
-            progress: this.attackPhase === 'telegraph' ?
-                1 - (this.attackTimer / this.telegraphDuration) : 1
-        };
-    }
-
-    getCurrentAttackTiles() {
-        return this.attackTile ? [this.attackTile] : [];
     }
 
     takeDamage(amount) {

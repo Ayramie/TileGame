@@ -316,6 +316,12 @@ export class Game {
         // Update adds (pass all adds for collision checking)
         for (const add of this.adds) {
             add.update(deltaTime, this.player, this.gameMap, this.adds);
+
+            // Check for damage dealt by add (for damage numbers)
+            if (add.lastDamageDealt) {
+                this.combat.addPlayerDamageNumber(add.lastDamageDealt);
+                add.lastDamageDealt = null;
+            }
         }
 
         // Process combat (include adds and pillars as enemies)
@@ -328,7 +334,6 @@ export class Game {
         this.combat.processShockwave(this.player, allEnemies);
         this.combat.processLeapSlam(this.player, allEnemies);
         this.combat.processEnemyAttacks(this.enemies, this.player);
-        this.combat.processAddAttacks(this.adds, this.player);
         this.combat.update(deltaTime);
 
         // Update environmental hazards (lasers only in phase 2)
@@ -483,11 +488,6 @@ export class Game {
         // Draw enemy telegraphs (before entities so they appear under)
         for (const enemy of this.enemies) {
             this.renderer.drawEnemyTelegraph(enemy);
-        }
-
-        // Draw add telegraphs
-        for (const add of this.adds) {
-            this.renderer.drawAddTelegraph(add);
         }
 
         // Collect all entities for depth sorting (use smooth positions)
