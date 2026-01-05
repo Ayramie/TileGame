@@ -5,7 +5,7 @@ import { PlayerSprite } from './sprites.js';
 const PLAYER_SCALE = 0.8;
 const SLIME_SCALE = 0.7;
 const GREATER_SLIME_SCALE = 0.85;
-const BOSS_SCALE = 1.0;
+const BOSS_SCALE = 0.85;
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -564,7 +564,7 @@ export class Renderer {
         // Boss center position - centered on 2x2 tile area
         const pos = tileToScreenCenter(enemy.smoothX + 1, enemy.smoothY + 1);
         const screenX = pos.x;
-        let screenY = pos.y - 40 * scale; // Float above ground
+        let screenY = pos.y - 45 * scale; // Float above ground
 
         // Animation values
         let floatOffset = Math.sin(this.time * 2) * 5 * scale;
@@ -590,7 +590,7 @@ export class Renderer {
         // Shadow on ground
         ctx.fillStyle = 'rgba(80, 0, 120, 0.4)';
         ctx.beginPath();
-        ctx.ellipse(0, 30 - floatOffset / scale, 30, 12, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 15 - floatOffset / scale, 30, 12, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Target highlight (red circle when targeted)
@@ -599,14 +599,14 @@ export class Renderer {
             ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.ellipse(0, 30 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 15 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
 
             // Inner red glow
             ctx.strokeStyle = `rgba(255, 100, 100, ${targetPulse * 0.5})`;
             ctx.lineWidth = 6;
             ctx.beginPath();
-            ctx.ellipse(0, 30 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 15 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
         } else if (isHovered) {
             // Hover highlight (yellow/gold outline)
@@ -616,7 +616,7 @@ export class Renderer {
             ctx.shadowColor = '#ffdd66';
             ctx.shadowBlur = 12;
             ctx.beginPath();
-            ctx.ellipse(0, 30 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 15 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
         }
