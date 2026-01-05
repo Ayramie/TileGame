@@ -268,8 +268,8 @@ export class Game {
         if (this.player.isAlive) {
             // Left click to move (target persists)
             if (this.input.consumeLeftClick()) {
-                // Pass both enemies and adds for collision detection
-                const allBlockers = [...this.enemies, ...this.adds];
+                // Pass enemies, adds, and greater slimes for collision detection
+                const allBlockers = [...this.enemies, ...this.adds, ...this.greaterSlimes];
                 this.player.setMoveTarget(mouse.x, mouse.y, this.gameMap, allBlockers);
             }
 
@@ -448,7 +448,7 @@ export class Game {
             const prevY = this.player.y;
 
             // Update player
-            const allBlockers = [...this.enemies, ...this.adds];
+            const allBlockers = [...this.enemies, ...this.adds, ...this.greaterSlimes];
             this.player.update(scaledDelta, this.gameMap, allBlockers);
 
             // Add trail particles during charge
