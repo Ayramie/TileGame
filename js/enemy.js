@@ -154,6 +154,18 @@ export class Enemy {
             }
         }
 
+        // Track how long player has been close (for shockwave trigger)
+        const bossCenterX = this.tileX + this.width / 2;
+        const bossCenterY = this.tileY + this.height / 2;
+        const dx = player.tileX - bossCenterX;
+        const dy = player.tileY - bossCenterY;
+        const distToPlayer = Math.sqrt(dx * dx + dy * dy);
+        if (distToPlayer <= this.closeThreshold) {
+            this.playerCloseTimer += deltaTime;
+        } else {
+            this.playerCloseTimer = 0;
+        }
+
         // Handle current attack
         if (this.attackPhase !== 'none') {
             this.updateAttack(deltaTime);
@@ -278,13 +290,6 @@ export class Enemy {
 
         // Store player position for attack targeting
         this.targetPlayerTile = { x: player.tileX, y: player.tileY };
-
-        // Track how long player has been close
-        if (distance <= this.closeThreshold) {
-            this.playerCloseTimer += deltaTime;
-        } else {
-            this.playerCloseTimer = 0;
-        }
 
         // Priority 1: BOUNCE if player is far away
         if (distance >= this.farThreshold && this.attackCooldowns.BOUNCE <= 0) {
