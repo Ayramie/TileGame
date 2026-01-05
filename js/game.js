@@ -304,7 +304,9 @@ export class Game {
                 this.player.updateBladeStorm(deltaTime, moveDir);
             }
             if (this.input.wasKeyJustReleased('w') && this.player.bladeStormActive) {
-                this.player.releaseBladeStorm();
+                // Shoot disk towards cursor
+                const cursorTile = isoToCart(mouse.x, mouse.y);
+                this.player.releaseBladeStorm(cursorTile.x, cursorTile.y);
             }
 
             // 1 for health potion
@@ -712,6 +714,8 @@ export class Game {
 
         for (const pos of spawnPositions) {
             const add = new Add(pos.x, pos.y);
+            add.aggroRange = Infinity; // Boss fight adds always aggro
+            add.isAggroed = true; // Start aggroed
             this.adds.push(add);
         }
     }

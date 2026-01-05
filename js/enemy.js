@@ -959,6 +959,7 @@ export class Add {
         if (!this.isAlive) return;
         this.health -= amount;
         this.hitFlashTimer = this.hitFlashDuration;
+        this.isAggroed = true; // Aggro when hit
         if (this.health <= 0) {
             this.health = 0;
             this.isAlive = false;

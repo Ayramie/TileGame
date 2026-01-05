@@ -847,18 +847,32 @@ export class Player {
         }
     }
 
-    releaseBladeStorm() {
+    releaseBladeStorm(targetX = null, targetY = null) {
         if (!this.bladeStormActive) return false;
 
         this.bladeStormActive = false;
         this.bladeStormCooldown = this.bladeStormCooldownMax;
 
-        // Shoot spinning disk in last move direction
+        // Calculate direction - towards cursor if provided, otherwise use last move dir
+        let dirX = this.bladeStormLastMoveDir.x;
+        let dirY = this.bladeStormLastMoveDir.y;
+
+        if (targetX !== null && targetY !== null) {
+            const dx = targetX - this.tileX;
+            const dy = targetY - this.tileY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0.1) {
+                dirX = dx / dist;
+                dirY = dy / dist;
+            }
+        }
+
+        // Shoot spinning disk towards target
         this.spinningDisk = {
             x: this.tileX,
             y: this.tileY,
-            dirX: this.bladeStormLastMoveDir.x,
-            dirY: this.bladeStormLastMoveDir.y,
+            dirX: dirX,
+            dirY: dirY,
             speed: this.spinningDiskSpeed,
             damage: this.spinningDiskDamage,
             lifetime: this.spinningDiskLifetime,
