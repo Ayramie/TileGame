@@ -1036,9 +1036,12 @@ export class Add {
             { x: player.tileX - 1, y: player.tileY - 1 }
         ];
 
-        // Filter to only open spots (not our current position)
+        // Filter to only open spots that are 1 tile away from current position
         const openSpots = adjacentToPlayer.filter(spot => {
             if (spot.x === this.tileX && spot.y === this.tileY) return false;
+            // Only allow moving 1 tile at a time
+            const moveDist = Math.max(Math.abs(spot.x - this.tileX), Math.abs(spot.y - this.tileY));
+            if (moveDist > 1) return false;
             if (!gameMap.isWalkable(spot.x, spot.y)) return false;
             // Check scenery blocking
             if (this.scenery && this.scenery.some(s => s.blocking && s.x === spot.x && s.y === spot.y)) return false;
@@ -1418,9 +1421,12 @@ export class GreaterSlime {
             { x: player.tileX - 1, y: player.tileY - 1 }
         ];
 
-        // Filter to only open spots (not our current position)
+        // Filter to only open spots that are 1 tile away from current position
         const openSpots = adjacentToPlayer.filter(spot => {
             if (spot.x === this.tileX && spot.y === this.tileY) return false;
+            // Only allow moving 1 tile at a time
+            const moveDist = Math.max(Math.abs(spot.x - this.tileX), Math.abs(spot.y - this.tileY));
+            if (moveDist > 1) return false;
             if (!gameMap.isWalkable(spot.x, spot.y)) return false;
             // Check scenery blocking
             if (this.scenery && this.scenery.some(s => s.blocking && s.x === spot.x && s.y === spot.y)) return false;
