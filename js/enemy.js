@@ -113,6 +113,12 @@ export class Enemy {
     update(deltaTime, player, gameMap, groundHazards = null) {
         if (!this.isAlive) return;
 
+        // Pause all actions when hidden (during portal dash phase)
+        if (this.isHidden) {
+            this.updateSmoothPosition(deltaTime);
+            return;
+        }
+
         this.groundHazards = groundHazards; // Store reference for attack effects
         this.playerRef = player; // Store for bounce landing check
         this.gameMapRef = gameMap; // Store for phase transition
@@ -1285,8 +1291,8 @@ export class Cocoon {
         this.height = 1;
         this.smoothX = tileX;
         this.smoothY = tileY;
-        this.health = 50;
-        this.maxHealth = 50;
+        this.health = 35;
+        this.maxHealth = 35;
         this.isAlive = true;
         this.hitFlashTimer = 0;
         this.hitFlashDuration = 0.1;
