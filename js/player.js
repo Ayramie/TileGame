@@ -620,14 +620,8 @@ export class Player {
                 this.targetTileX = this.tileX;
                 this.targetTileY = this.tileY;
                 this.path = [];
-            } else {
-                // Move towards enemy
-                if (this.gameMapRef) {
-                    this.targetTileX = Math.round(enemyCenterX);
-                    this.targetTileY = Math.round(enemyCenterY);
-                    this.finalDestination = { x: this.targetTileX, y: this.targetTileY };
-                }
             }
+            // No auto-move to enemy - player must manually move into range
         } else if (this.targetEnemy && !this.targetEnemy.isAlive) {
             // Target died, clear it
             this.targetEnemy = null;

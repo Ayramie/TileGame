@@ -46,6 +46,55 @@ export class Game {
 
         this.lastTime = 0;
         this.running = false;
+
+        // Menu overlay state
+        this.menuOverlayOpen = false;
+        this.setupMenuOverlay();
+    }
+
+    setupMenuOverlay() {
+        const overlay = document.getElementById('menu-overlay');
+        const closeBtn = document.getElementById('menu-close');
+        const tabs = document.querySelectorAll('.menu-tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // Close button
+        closeBtn.addEventListener('click', () => this.toggleMenuOverlay(false));
+
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+
+                tab.classList.add('active');
+                document.getElementById('tab-' + tabId).classList.add('active');
+            });
+        });
+
+        // Close when clicking outside
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.toggleMenuOverlay(false);
+            }
+        });
+    }
+
+    toggleMenuOverlay(forceState = null) {
+        const overlay = document.getElementById('menu-overlay');
+        if (forceState !== null) {
+            this.menuOverlayOpen = forceState;
+        } else {
+            this.menuOverlayOpen = !this.menuOverlayOpen;
+        }
+
+        if (this.menuOverlayOpen) {
+            overlay.classList.remove('hidden');
+        } else {
+            overlay.classList.add('hidden');
+        }
     }
 
     initGame(mode) {
@@ -152,6 +201,16 @@ export class Game {
     }
 
     update(deltaTime) {
+        // Tab key to toggle game guide overlay
+        if (this.input.wasKeyJustPressed('tab')) {
+            this.toggleMenuOverlay();
+        }
+
+        // If menu overlay is open, don't process game input
+        if (this.menuOverlayOpen) {
+            return;
+        }
+
         // Handle menu state
         if (this.gameState === 'menu') {
             this.updateMenu();
@@ -273,12 +332,21 @@ export class Game {
                 }
 
                 if (clickedEnemy) {
-                    // Set as target - player will run to and auto-attack
-                    this.player.setTargetEnemy(clickedEnemy);
+                    // Toggle target - if clicking same enemy, clear it
+                    if (this.player.targetEnemy === clickedEnemy) {
+                        this.player.clearTarget();
+                    } else {
+                        this.player.setTargetEnemy(clickedEnemy);
+                    }
                 } else {
                     // Clear target when clicking empty space
                     this.player.clearTarget();
                 }
+            }
+
+            // Escape to clear target
+            if (this.input.wasKeyJustPressed('escape')) {
+                this.player.clearTarget();
             }
 
             // Q to toggle cleave buff (next auto-attack will cleave)

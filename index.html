@@ -8,10 +8,176 @@
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+
+    <!-- Game Menu Overlay -->
+    <div id="menu-overlay" class="hidden">
+        <div id="menu-container">
+            <div id="menu-header">
+                <h2>Game Guide</h2>
+                <button id="menu-close">&times;</button>
+            </div>
+            <div id="menu-tabs">
+                <button class="menu-tab active" data-tab="skills">Skills</button>
+                <button class="menu-tab" data-tab="bosses">Bosses</button>
+                <button class="menu-tab" data-tab="mobs">Mobs</button>
+            </div>
+            <div id="menu-content">
+                <!-- Skills Tab -->
+                <div class="tab-content active" id="tab-skills">
+                    <div class="skill-entry">
+                        <div class="skill-header">
+                            <span class="skill-key">RMB</span>
+                            <span class="skill-name">Auto Attack</span>
+                        </div>
+                        <p class="skill-desc">Basic melee attack. Right-click an enemy to target them, then move into range to automatically attack.</p>
+                        <div class="skill-stats">
+                            <span>Damage: 35</span>
+                            <span>Range: 2 tiles</span>
+                            <span>Cooldown: 0.8s</span>
+                        </div>
+                    </div>
+                    <div class="skill-entry">
+                        <div class="skill-header">
+                            <span class="skill-key">Q</span>
+                            <span class="skill-name">Cleave</span>
+                        </div>
+                        <p class="skill-desc">Empowers your next auto attack to deal additional damage in a cone, hitting all enemies in front of you.</p>
+                        <div class="skill-stats">
+                            <span>Damage: 50 (AoE)</span>
+                            <span>Cone: 90 degrees</span>
+                            <span>Cooldown: 5s</span>
+                        </div>
+                    </div>
+                    <div class="skill-entry">
+                        <div class="skill-header">
+                            <span class="skill-key">W</span>
+                            <span class="skill-name">Blade Storm</span>
+                        </div>
+                        <p class="skill-desc">Hold to charge, release to throw a spinning blade disk in the cursor direction. Longer charge = more damage. Auto-releases after 3 seconds.</p>
+                        <div class="skill-stats">
+                            <span>Damage: 20-60</span>
+                            <span>Max Charge: 3s</span>
+                            <span>Cooldown: 6s</span>
+                        </div>
+                    </div>
+                    <div class="skill-entry">
+                        <div class="skill-header">
+                            <span class="skill-key">E</span>
+                            <span class="skill-name">Earthquake</span>
+                        </div>
+                        <p class="skill-desc">Hold to charge (up to 3 levels), release to slam the ground. Creates expanding rings of damage. Higher charge = larger area and +25% damage per level.</p>
+                        <div class="skill-stats">
+                            <span>Damage: 40/50/62</span>
+                            <span>Radius: 2/3/4 tiles</span>
+                            <span>Cooldown: 10s</span>
+                        </div>
+                    </div>
+                    <div class="skill-entry">
+                        <div class="skill-header">
+                            <span class="skill-key">R</span>
+                            <span class="skill-name">Charge</span>
+                        </div>
+                        <p class="skill-desc">Dash towards your target enemy, stunning them for 1 second. Stops if you collide with another enemy on the way.</p>
+                        <div class="skill-stats">
+                            <span>Stun: 1s</span>
+                            <span>Requires: Target</span>
+                            <span>Cooldown: 8s</span>
+                        </div>
+                    </div>
+                    <div class="skill-entry">
+                        <div class="skill-header">
+                            <span class="skill-key">1</span>
+                            <span class="skill-name">Health Potion</span>
+                        </div>
+                        <p class="skill-desc">Instantly restore health. Limited uses per encounter.</p>
+                        <div class="skill-stats">
+                            <span>Heal: 50 HP</span>
+                            <span>Charges: 3</span>
+                            <span>Cooldown: 1s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bosses Tab -->
+                <div class="tab-content" id="tab-bosses">
+                    <div class="boss-entry">
+                        <div class="boss-header">
+                            <span class="boss-name">The Slime King</span>
+                            <span class="boss-hp">HP: 1600</span>
+                        </div>
+                        <p class="boss-desc">A massive slime that rules over its gelatinous minions. Attacks with ground slams and summons adds when damaged.</p>
+                        <div class="boss-abilities">
+                            <h4>Abilities:</h4>
+                            <div class="boss-ability">
+                                <strong>Ground Slam</strong> - Smashes the ground, dealing damage in a large area around it. Move away when the indicator appears!
+                            </div>
+                            <div class="boss-ability">
+                                <strong>Summon Slimes</strong> - At 75%, 50%, and 25% health, spawns slime adds that will aggressively attack you.
+                            </div>
+                            <div class="boss-ability">
+                                <strong>Soak Mechanic</strong> - Periodically marks tiles that must be soaked by standing on them, or suffer massive damage.
+                            </div>
+                        </div>
+                        <div class="boss-tips">
+                            <h4>Tips:</h4>
+                            <ul>
+                                <li>Save Earthquake for add spawns to clear them quickly</li>
+                                <li>Use Charge to stun the boss during dangerous attacks</li>
+                                <li>Always prioritize soaking marked tiles</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobs Tab -->
+                <div class="tab-content" id="tab-mobs">
+                    <div class="mob-entry">
+                        <div class="mob-header">
+                            <span class="mob-name">Slime</span>
+                            <span class="mob-hp">HP: 60</span>
+                        </div>
+                        <p class="mob-desc">Basic slime enemies that hop around the arena. They become aggressive when you get too close or when you attack them.</p>
+                        <div class="mob-stats">
+                            <span>Damage: 15</span>
+                            <span>Aggro Range: 4 tiles</span>
+                        </div>
+                        <div class="mob-behavior">
+                            <h4>Behavior:</h4>
+                            <ul>
+                                <li>Idle slimes wander randomly until provoked</li>
+                                <li>Attacking a slime will immediately aggro it</li>
+                                <li>Boss fight slimes have infinite aggro range</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mob-entry">
+                        <div class="mob-header">
+                            <span class="mob-name">Pillar</span>
+                            <span class="mob-hp">HP: 100</span>
+                        </div>
+                        <p class="mob-desc">Destructible objects that appear during puzzle phases. Destroy all pillars to progress.</p>
+                        <div class="mob-behavior">
+                            <h4>Notes:</h4>
+                            <ul>
+                                <li>Cannot move or attack</li>
+                                <li>Must be destroyed to complete puzzle phase</li>
+                                <li>Can be targeted like enemies</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="menu-footer">
+                <span>Press <kbd>Tab</kbd> to close</span>
+            </div>
+        </div>
+    </div>
+
     <div id="ui">
         <div id="controls-hint">
             <span>LMB: Move</span>
             <span>RMB: Target</span>
+            <span>Tab: Guide</span>
         </div>
         <div id="ability-bar">
             <div class="ability" id="ability-rmb">

@@ -48,8 +48,8 @@ export class Enemy {
         this.x = tileX * TILE_SIZE;
         this.y = tileY * TILE_SIZE;
         this.smoothSpeed = 3; // tiles per second for interpolation (slower = smoother)
-        this.health = 800;
-        this.maxHealth = 800;
+        this.health = 1600;
+        this.maxHealth = 1600;
         this.isAlive = true;
 
         // Phase transition
