@@ -193,6 +193,93 @@ export class SoundSystem {
         osc.start();
         osc.stop(this.context.currentTime + 0.1);
     }
+
+    // Play parry sound (metallic clang)
+    playParry() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        if (!this.context) return;
+
+        // Create a metallic clang using multiple oscillators
+        const osc1 = this.context.createOscillator();
+        const osc2 = this.context.createOscillator();
+        const gain = this.context.createGain();
+        const filter = this.context.createBiquadFilter();
+
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.context.destination);
+
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(2000, this.context.currentTime);
+        filter.Q.setValueAtTime(5, this.context.currentTime);
+
+        osc1.type = 'square';
+        osc1.frequency.setValueAtTime(800, this.context.currentTime);
+        osc1.frequency.exponentialRampToValueAtTime(400, this.context.currentTime + 0.1);
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(1200, this.context.currentTime);
+        osc2.frequency.exponentialRampToValueAtTime(600, this.context.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(this.masterVolume * 0.5, this.context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.context.currentTime + 0.15);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(this.context.currentTime + 0.15);
+        osc2.stop(this.context.currentTime + 0.15);
+    }
+
+    // Play perfect parry sound (bigger, more satisfying clang with resonance)
+    playPerfectParry() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        if (!this.context) return;
+
+        // Create a bigger, more impactful sound
+        const osc1 = this.context.createOscillator();
+        const osc2 = this.context.createOscillator();
+        const osc3 = this.context.createOscillator();
+        const gain = this.context.createGain();
+        const filter = this.context.createBiquadFilter();
+
+        osc1.connect(filter);
+        osc2.connect(filter);
+        osc3.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.context.destination);
+
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(3000, this.context.currentTime);
+        filter.Q.setValueAtTime(3, this.context.currentTime);
+
+        // Main impact
+        osc1.type = 'square';
+        osc1.frequency.setValueAtTime(1000, this.context.currentTime);
+        osc1.frequency.exponentialRampToValueAtTime(300, this.context.currentTime + 0.15);
+
+        // High shimmer
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(2000, this.context.currentTime);
+        osc2.frequency.exponentialRampToValueAtTime(1500, this.context.currentTime + 0.2);
+
+        // Low resonance
+        osc3.type = 'triangle';
+        osc3.frequency.setValueAtTime(400, this.context.currentTime);
+        osc3.frequency.exponentialRampToValueAtTime(200, this.context.currentTime + 0.25);
+
+        gain.gain.setValueAtTime(this.masterVolume * 0.7, this.context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.context.currentTime + 0.25);
+
+        osc1.start();
+        osc2.start();
+        osc3.start();
+        osc1.stop(this.context.currentTime + 0.25);
+        osc2.stop(this.context.currentTime + 0.25);
+        osc3.stop(this.context.currentTime + 0.25);
+    }
 }
 
 // Easing functions

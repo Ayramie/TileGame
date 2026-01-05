@@ -1037,84 +1037,77 @@ export class Renderer {
         }
     }
 
-    drawEarthquakeTelegraph(player) {
+    drawParryState(player) {
         const ctx = this.ctx;
+        const pos = tileToScreenCenter(player.x, player.y);
 
-        // Draw staged explosion effect (rings exploding outward)
-        if (player.earthquakeExploding && player.earthquakeExplosionRings.length > 0) {
-            for (const ring of player.earthquakeExplosionRings) {
-                if (!ring.exploded) continue;
+        // Draw parry stance visual (shield aura around player)
+        if (player.parryActive) {
+            const timeElapsed = player.parryWindow - player.parryTimer;
+            const isPerfectWindow = timeElapsed <= player.parryPerfectWindow;
 
-                // Calculate fade based on fadeTimer
-                const fadeProgress = ring.fadeTimer !== undefined ? (1 - ring.fadeTimer / 0.3) : 0;
-                const alpha = Math.max(0, 1 - fadeProgress);
+            // Pulsing shield effect
+            const pulse = Math.sin(this.time * 20) * 0.15 + 0.85;
 
-                for (const tile of ring.tiles) {
-                    // Brown/orange earthquake effect
-                    const fillColor = `rgba(180, 120, 60, ${alpha * 0.7})`;
-                    const strokeColor = `rgba(255, 180, 80, ${alpha})`;
-                    this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+            ctx.save();
 
-                    // Extra bright flash when first exploding
-                    if (fadeProgress < 0.3) {
-                        const flashAlpha = (0.3 - fadeProgress) / 0.3;
-                        this.drawIsometricTile(tile.x, tile.y, `rgba(255, 220, 150, ${flashAlpha * 0.6})`);
-                    }
+            // Draw shield arc/aura
+            const shieldRadius = 30 * pulse;
 
-                    // Draw crack/debris particles
-                    const pos = tileToScreenCenter(tile.x, tile.y);
-                    const ringRadius = 8 + fadeProgress * 12;
-
-                    ctx.save();
-                    ctx.strokeStyle = `rgba(140, 90, 40, ${alpha * 0.8})`;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(pos.x, pos.y + 10, ringRadius, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.restore();
-                }
+            // Perfect window has golden color, normal has blue
+            if (isPerfectWindow) {
+                ctx.strokeStyle = `rgba(255, 215, 0, ${pulse})`;
+                ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.3})`;
+            } else {
+                ctx.strokeStyle = `rgba(100, 180, 255, ${pulse * 0.8})`;
+                ctx.fillStyle = `rgba(100, 180, 255, ${pulse * 0.2})`;
             }
-        }
 
-        // Draw charging telegraph
-        if (!player.earthquakeCharging && player.earthquakeTiles.length === 0) return;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y - 10, shieldRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
 
-        const tiles = player.earthquakeTiles;
-        const chargeLevel = player.getEarthquakeChargeLevel();
+            // Inner glow
+            const innerRadius = 20 * pulse;
+            if (isPerfectWindow) {
+                ctx.fillStyle = `rgba(255, 255, 200, ${pulse * 0.4})`;
+            } else {
+                ctx.fillStyle = `rgba(150, 200, 255, ${pulse * 0.3})`;
+            }
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y - 10, innerRadius, 0, Math.PI * 2);
+            ctx.fill();
 
-        // Pulsing based on charge
-        const pulse = Math.sin(this.time * 6) * 0.2 + 0.7;
-
-        // Color intensity based on charge level
-        const intensity = Math.min(1, chargeLevel / player.earthquakeMaxLevel);
-
-        for (const tile of tiles) {
-            const fillColor = `rgba(180, 120, 60, ${pulse * 0.4 * intensity})`;
-            const strokeColor = `rgba(220, 160, 80, ${pulse * intensity})`;
-            this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
-        }
-
-        // Draw charge level indicator above player
-        if (player.earthquakeCharging) {
-            const pos = tileToScreenCenter(player.x, player.y);
-
-            // Charge bar background
+            // Parry window timer bar
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(pos.x - 25, pos.y - 55, 50, 8);
+            ctx.fillRect(pos.x - 20, pos.y - 55, 40, 6);
 
-            // Charge bar fill
-            const chargePercent = player.earthquakeChargeTime / player.earthquakeMaxCharge;
-            const gradient = ctx.createLinearGradient(pos.x - 25, 0, pos.x + 25, 0);
-            gradient.addColorStop(0, '#aa6622');
-            gradient.addColorStop(1, '#ddaa44');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(pos.x - 25, pos.y - 55, 50 * chargePercent, 8);
+            const windowPercent = player.parryTimer / player.parryWindow;
+            if (isPerfectWindow) {
+                ctx.fillStyle = '#ffd700';
+            } else {
+                ctx.fillStyle = '#66aaff';
+            }
+            ctx.fillRect(pos.x - 20, pos.y - 55, 40 * windowPercent, 6);
 
-            // Level text
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 12px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(`Lv.${chargeLevel}`, pos.x, pos.y - 60);
+            ctx.restore();
+        }
+
+        // Draw vulnerability state (red tint)
+        if (player.parryVulnerable) {
+            const pulse = Math.sin(this.time * 15) * 0.3 + 0.5;
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(255, 80, 80, ${pulse})`;
+            ctx.fillStyle = `rgba(255, 0, 0, ${pulse * 0.2})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y - 10, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
         }
     }
 
@@ -1543,22 +1536,32 @@ export class Renderer {
             }
         }
 
-        // Earthquake cooldown
+        // Parry cooldown
         const abilityE = document.getElementById('ability-e');
         if (abilityE) {
             const overlay = abilityE.querySelector('.cooldown-overlay');
-            if (player.earthquakeCooldown > 0) {
+            if (player.parryCooldown > 0) {
                 abilityE.classList.add('on-cooldown');
-                const percent = (player.earthquakeCooldown / player.earthquakeCooldownMax) * 100;
+                abilityE.classList.remove('active');
+                abilityE.classList.remove('vulnerable');
+                const percent = (player.parryCooldown / player.parryCooldownOnSuccess) * 100;
                 overlay.style.height = `${percent}%`;
-            } else if (player.earthquakeCharging) {
-                // Show charging state
-                abilityE.classList.add('charging');
+            } else if (player.parryActive) {
+                // Show parry active state
+                abilityE.classList.add('active');
                 abilityE.classList.remove('on-cooldown');
+                abilityE.classList.remove('vulnerable');
+                overlay.style.height = '0%';
+            } else if (player.parryVulnerable) {
+                // Show vulnerability state
+                abilityE.classList.add('vulnerable');
+                abilityE.classList.remove('on-cooldown');
+                abilityE.classList.remove('active');
                 overlay.style.height = '0%';
             } else {
                 abilityE.classList.remove('on-cooldown');
-                abilityE.classList.remove('charging');
+                abilityE.classList.remove('active');
+                abilityE.classList.remove('vulnerable');
                 overlay.style.height = '0%';
             }
         }

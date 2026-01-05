@@ -53,7 +53,7 @@ export class Game {
         this.prevCooldowns = {
             cleave: 0,
             bladeStorm: 0,
-            earthquake: 0,
+            parry: 0,
             charge: 0,
             potion: 0
         };
@@ -455,15 +455,9 @@ export class Game {
                 }
             }
 
-            // E for earthquake (hold to charge, release to fire)
+            // E for parry (press to activate parry window)
             if (this.input.wasKeyJustPressed('e')) {
-                this.player.startEarthquakeCharge();
-            }
-            if (this.input.isKeyPressed('e') && this.player.earthquakeCharging) {
-                this.player.updateEarthquakeCharge(deltaTime);
-            }
-            if (this.input.wasKeyJustReleased('e') && this.player.earthquakeCharging) {
-                this.player.releaseEarthquake();
+                this.player.startParry();
             }
 
             // R for charge (dash to target and stun)
@@ -533,6 +527,36 @@ export class Game {
                 this.player.chargeWhooshPlayed = false;
             }
 
+            // Trigger effects when parry succeeds
+            if (this.player.parrySuccess) {
+                const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+
+                if (this.player.parryPerfectSuccess) {
+                    // Perfect parry - big effects
+                    this.screenShake.add(0.5);
+                    this.hitPause.trigger(0.1);
+                    this.particles.addBurst(playerScreen.x, playerScreen.y - 15, '#ffff44', 16, 200);
+                    this.particles.addBurst(playerScreen.x, playerScreen.y - 15, '#ffffff', 8, 150);
+                    this.sound.playPerfectParry();
+                } else {
+                    // Normal parry
+                    this.screenShake.add(0.25);
+                    this.hitPause.trigger(0.05);
+                    this.particles.addBurst(playerScreen.x, playerScreen.y - 15, '#88ccff', 10, 120);
+                    this.sound.playParry();
+                }
+                this.player.parrySuccess = false;
+                this.player.parryPerfectSuccess = false;
+            }
+
+            // Check for pending riposte damage numbers
+            if (this.player.pendingRiposteDamage) {
+                const dmg = this.player.pendingRiposteDamage;
+                const pos = tileToScreenCenter(dmg.x, dmg.y);
+                this.combat.addDamageNumber(pos.x, pos.y - 40, dmg.damage);
+                this.player.pendingRiposteDamage = null;
+            }
+
             // Check for pending damage numbers from auto-attacks
             if (this.player.pendingDamageNumber) {
                 const dmg = this.player.pendingDamageNumber;
@@ -552,7 +576,7 @@ export class Game {
             if (this.prevCooldowns.bladeStorm > 0 && p.bladeStormCooldown <= 0) {
                 this.sound.playReady();
             }
-            if (this.prevCooldowns.earthquake > 0 && p.earthquakeCooldown <= 0) {
+            if (this.prevCooldowns.parry > 0 && p.parryCooldown <= 0) {
                 this.sound.playReady();
             }
             if (this.prevCooldowns.charge > 0 && p.chargeCooldown <= 0) {
@@ -564,7 +588,7 @@ export class Game {
             // Update tracked cooldowns
             this.prevCooldowns.cleave = p.cleaveCooldown;
             this.prevCooldowns.bladeStorm = p.bladeStormCooldown;
-            this.prevCooldowns.earthquake = p.earthquakeCooldown;
+            this.prevCooldowns.parry = p.parryCooldown;
             this.prevCooldowns.charge = p.chargeCooldown;
             this.prevCooldowns.potion = p.healthPotionCooldown;
         } else {
@@ -665,7 +689,6 @@ export class Game {
         this.combat.processCleave(this.player, allEnemies);
         this.combat.processShockwave(this.player, allEnemies);
         this.combat.processLeapSlam(this.player, allEnemies);
-        this.combat.processEarthquake(this.player, allEnemies);
         this.combat.processBladeStorm(this.player, allEnemies);
         this.combat.processSpinningDisk(this.player, allEnemies);
 
@@ -924,8 +947,8 @@ export class Game {
         // Draw shockwave telegraph (while charging) - kept for future use
         this.renderer.drawShockwaveTelegraph(this.player);
 
-        // Draw earthquake telegraph (while charging and exploding)
-        this.renderer.drawEarthquakeTelegraph(this.player);
+        // Draw parry state visual (shield aura when parrying, red when vulnerable)
+        this.renderer.drawParryState(this.player);
 
         // Draw blade storm effect
         this.renderer.drawBladeStorm(this.player);

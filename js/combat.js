@@ -100,32 +100,6 @@ export class CombatSystem {
         player.leapSlamTiles = [];
     }
 
-    processEarthquake(player, enemies) {
-        if (!player.earthquakeExploding) return;
-
-        const damage = player.getEarthquakeDamage();
-
-        for (const ring of player.earthquakeExplosionRings) {
-            if (!ring.hitPending) continue;
-            ring.hitPending = false;
-
-            const hitEnemies = new Set();
-
-            for (const enemy of enemies) {
-                if (!enemy.isAlive) continue;
-
-                for (const tile of ring.tiles) {
-                    if (enemy.occupiesTile(tile.x, tile.y) && !hitEnemies.has(enemy)) {
-                        hitEnemies.add(enemy);
-                        enemy.takeDamage(damage);
-                        const screenPos = tileToScreenCenter(enemy.tileX + 0.5, enemy.tileY + 0.5);
-                        this.addDamageNumber(screenPos.x, screenPos.y - 30, damage);
-                    }
-                }
-            }
-        }
-    }
-
     processBladeStorm(player, enemies) {
         if (!player.bladeStormActive) return;
 
@@ -186,6 +160,12 @@ export class CombatSystem {
 
             for (const tile of attackTiles) {
                 if (tile.x === player.tileX && tile.y === player.tileY) {
+                    // Check if player parries the attack
+                    if (player.tryParry(enemy)) {
+                        // Parry successful - damage negated, riposte handled by player
+                        break;
+                    }
+
                     player.takeDamage(enemy.currentAttackDamage);
                     this.addPlayerDamageNumber(enemy.currentAttackDamage);
                     // Apply stun if shockwave attack
@@ -207,6 +187,12 @@ export class CombatSystem {
 
             for (const tile of attackTiles) {
                 if (tile.x === player.tileX && tile.y === player.tileY) {
+                    // Check if player parries the attack
+                    if (player.tryParry(add)) {
+                        // Parry successful - damage negated, riposte handled by player
+                        break;
+                    }
+
                     player.takeDamage(add.attackDamage);
                     this.addPlayerDamageNumber(add.attackDamage);
                     break;

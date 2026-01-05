@@ -95,22 +95,24 @@ export class Player {
         this.shockwaveExplosionTimer = 0;
         this.shockwaveExplosionDuration = 0.4;
 
-        // Earthquake ability (E) - replaces shockwave for now
-        this.earthquakeCharging = false;
-        this.earthquakeChargeTime = 0;
-        this.earthquakeMaxCharge = 1.25; // Time to reach max level 5
-        this.earthquakeChargePerLevel = 0.25; // Time per charge level
-        this.earthquakeCooldown = 0;
-        this.earthquakeCooldownMax = 8;
-        this.earthquakeDamage = 20;
-        this.earthquakeTiles = []; // Current tiles for telegraph
-        this.earthquakeHitPending = false;
-
-        // Earthquake staged explosion effect
-        this.earthquakeExploding = false;
-        this.earthquakeExplosionRings = []; // Array of {tiles, timer}
-        this.earthquakeExplosionDelay = 0.1; // Delay between each ring
-        this.earthquakeMaxLevel = 5;
+        // Parry ability (E)
+        this.parryActive = false;
+        this.parryTimer = 0;
+        this.parryWindow = 0.4;           // Total parry window duration
+        this.parryPerfectWindow = 0.15;   // Perfect parry window (from start)
+        this.parryCooldown = 0;
+        this.parryCooldownOnSuccess = 5;
+        this.parryCooldownOnWhiff = 4;
+        this.parryRiposteDamage = 50;
+        this.parryPerfectDamage = 100;
+        this.parryStunDuration = 0.5;
+        this.parryPerfectStunDuration = 1.0;
+        this.parryVulnerable = false;
+        this.parryVulnerableTimer = 0;
+        this.parryVulnerableDuration = 0.3;
+        this.parrySuccess = false;        // Flag for effects (consumed by game.js)
+        this.parryPerfectSuccess = false; // Flag for perfect parry effects
+        this.parryTarget = null;          // Enemy that was parried (for riposte)
 
         // Cleave aiming (hold Q to aim, release to fire)
         this.cleaveAiming = false;
@@ -524,11 +526,11 @@ export class Player {
                 this.shockwaveExplosionTiles = [];
             }
         }
-        if (this.earthquakeCooldown > 0) {
-            this.earthquakeCooldown -= deltaTime;
+        if (this.parryCooldown > 0) {
+            this.parryCooldown -= deltaTime;
         }
-        // Update earthquake staged explosion
-        this.updateEarthquakeExplosion(deltaTime);
+        // Update parry state
+        this.updateParry(deltaTime);
 
         if (this.leapSlamCooldown > 0) {
             this.leapSlamCooldown -= deltaTime;
@@ -686,9 +688,7 @@ export class Player {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance > 0.05) {
-            // 50% speed penalty while charging earthquake
-            const speedMultiplier = this.earthquakeCharging ? 0.5 : 1.0;
-            const moveDistance = this.speed * speedMultiplier * deltaTime;
+            const moveDistance = this.speed * deltaTime;
             let newX, newY;
 
             if (moveDistance >= distance) {
@@ -1118,131 +1118,96 @@ export class Player {
         return Math.floor(this.shockwaveDamage * Math.pow(1.25, level - 1));
     }
 
-    // ========== EARTHQUAKE ABILITY ==========
+    // ========== PARRY ABILITY ==========
 
-    startEarthquakeCharge() {
-        if (this.earthquakeCooldown > 0 || this.earthquakeCharging || this.earthquakeExploding) return false;
+    startParry() {
+        // Cannot parry if: on cooldown, already parrying, stunned, or vulnerable
+        if (this.parryCooldown > 0 || this.parryActive || this.stunTimer > 0 || this.parryVulnerable) {
+            return false;
+        }
 
-        this.earthquakeCharging = true;
-        this.earthquakeChargeTime = 0;
-        this.earthquakeTiles = this.getEarthquakeTiles();
+        this.parryActive = true;
+        this.parryTimer = this.parryWindow;
+        this.parrySuccess = false;
+        this.parryPerfectSuccess = false;
+        this.parryTarget = null;
         return true;
     }
 
-    updateEarthquakeCharge(deltaTime) {
-        if (!this.earthquakeCharging) return;
-
-        this.earthquakeChargeTime = Math.min(this.earthquakeChargeTime + deltaTime, this.earthquakeMaxCharge);
-        this.earthquakeTiles = this.getEarthquakeTiles();
-    }
-
-    releaseEarthquake() {
-        if (!this.earthquakeCharging) return false;
-
-        this.earthquakeCharging = false;
-
-        // Only fire if we charged at least a little
-        if (this.earthquakeChargeTime >= this.earthquakeChargePerLevel * 0.5) {
-            const level = this.getEarthquakeChargeLevel();
-            this.earthquakeCooldown = this.earthquakeCooldownMax;
-            this.movementLockout = 0.3 + level * 0.1; // Longer lockout for bigger quakes
-
-            // Set up staged explosion - one ring per level
-            this.earthquakeExploding = true;
-            this.earthquakeExplosionRings = [];
-
-            for (let ring = 1; ring <= level; ring++) {
-                const ringTiles = this.getEarthquakeRing(ring);
-                this.earthquakeExplosionRings.push({
-                    tiles: ringTiles,
-                    timer: ring * this.earthquakeExplosionDelay, // Stagger each ring
-                    exploded: false
-                });
-            }
-
-            // Clear charging telegraph tiles
-            this.earthquakeTiles = [];
-            return true;
-        }
-
-        this.earthquakeTiles = [];
-        return false;
-    }
-
-    cancelEarthquake() {
-        this.earthquakeCharging = false;
-        this.earthquakeChargeTime = 0;
-        this.earthquakeTiles = [];
-    }
-
-    getEarthquakeChargeLevel() {
-        return Math.min(this.earthquakeMaxLevel, Math.floor(this.earthquakeChargeTime / this.earthquakeChargePerLevel) + 1);
-    }
-
-    getEarthquakeTiles() {
-        const level = this.getEarthquakeChargeLevel();
-        const tiles = [];
-
-        // Square rings around player, expanding with level
-        for (let ring = 1; ring <= level; ring++) {
-            const ringTiles = this.getEarthquakeRing(ring);
-            tiles.push(...ringTiles);
-        }
-
-        return tiles;
-    }
-
-    getEarthquakeRing(ring) {
-        const tiles = [];
-        // Create a square ring at distance 'ring' from player
-        for (let x = -ring; x <= ring; x++) {
-            for (let y = -ring; y <= ring; y++) {
-                // Only include tiles on the edge of the ring (not inner tiles)
-                if (Math.abs(x) === ring || Math.abs(y) === ring) {
-                    tiles.push({
-                        x: this.tileX + x,
-                        y: this.tileY + y
-                    });
-                }
-            }
-        }
-        return tiles;
-    }
-
-    updateEarthquakeExplosion(deltaTime) {
-        if (!this.earthquakeExploding) return;
-
-        let allExploded = true;
-
-        for (const ring of this.earthquakeExplosionRings) {
-            if (!ring.exploded) {
-                ring.timer -= deltaTime;
-                if (ring.timer <= 0) {
-                    ring.exploded = true;
-                    ring.hitPending = true; // Mark for damage processing
-                } else {
-                    allExploded = false;
-                }
+    updateParry(deltaTime) {
+        // Update vulnerability state
+        if (this.parryVulnerable) {
+            this.parryVulnerableTimer -= deltaTime;
+            if (this.parryVulnerableTimer <= 0) {
+                this.parryVulnerable = false;
             }
         }
 
-        if (allExploded) {
-            // Keep explosion visible for a bit after last ring
-            this.earthquakeExplosionRings = this.earthquakeExplosionRings.filter(r => {
-                r.fadeTimer = (r.fadeTimer || 0.3) - deltaTime;
-                return r.fadeTimer > 0;
-            });
+        // Update active parry window
+        if (this.parryActive) {
+            this.parryTimer -= deltaTime;
 
-            if (this.earthquakeExplosionRings.length === 0) {
-                this.earthquakeExploding = false;
+            // Parry window expired without blocking anything (whiff)
+            if (this.parryTimer <= 0) {
+                this.parryActive = false;
+                this.parryVulnerable = true;
+                this.parryVulnerableTimer = this.parryVulnerableDuration;
+                this.parryCooldown = this.parryCooldownOnWhiff;
             }
         }
     }
 
-    getEarthquakeDamage() {
-        const level = this.getEarthquakeChargeLevel();
-        // 25% increase per level: 20, 25, 31, 39, 49
-        return Math.floor(this.earthquakeDamage * Math.pow(1.25, level - 1));
+    // Called by combat system when player would take damage from an attacker
+    // Returns true if parry succeeds (damage should be negated)
+    tryParry(attacker) {
+        if (!this.parryActive) return false;
+
+        // Calculate time elapsed since parry started
+        const timeElapsed = this.parryWindow - this.parryTimer;
+        const isPerfect = timeElapsed <= this.parryPerfectWindow;
+
+        // Parry successful!
+        this.parryActive = false;
+        this.parrySuccess = true;
+        this.parryPerfectSuccess = isPerfect;
+        this.parryTarget = attacker;
+        this.parryCooldown = this.parryCooldownOnSuccess;
+
+        // Execute riposte immediately
+        this.executeRiposte();
+
+        return true;
+    }
+
+    executeRiposte() {
+        if (!this.parryTarget || !this.parryTarget.isAlive) return;
+
+        const damage = this.parryPerfectSuccess ? this.parryPerfectDamage : this.parryRiposteDamage;
+        const stunDuration = this.parryPerfectSuccess ? this.parryPerfectStunDuration : this.parryStunDuration;
+
+        // Deal riposte damage
+        this.parryTarget.takeDamage(damage);
+
+        // Stun the attacker
+        if (typeof this.parryTarget.applyStun === 'function') {
+            this.parryTarget.applyStun(stunDuration);
+        }
+
+        // Store damage info for combat system to display
+        this.pendingRiposteDamage = {
+            x: this.parryTarget.tileX + (this.parryTarget.width || 1) / 2,
+            y: this.parryTarget.tileY + (this.parryTarget.height || 1) / 2,
+            damage: damage,
+            isPerfect: this.parryPerfectSuccess
+        };
+    }
+
+    isParrying() {
+        return this.parryActive;
+    }
+
+    isVulnerable() {
+        return this.parryVulnerable;
     }
 
     // Leap Slam methods

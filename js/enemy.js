@@ -837,9 +837,15 @@ export class Add {
         if (meleeRange <= 1) {
             // In range - attack if off cooldown and visually arrived
             if (this.attackCooldown <= 0 && player.isAlive && hasArrived) {
-                player.takeDamage(this.attackDamage);
-                this.attackCooldown = this.attackCooldownMax;
-                this.lastDamageDealt = this.attackDamage;
+                // Check if player parries the attack
+                if (player.tryParry && player.tryParry(this)) {
+                    // Parry successful - no damage dealt
+                    this.attackCooldown = this.attackCooldownMax;
+                } else {
+                    player.takeDamage(this.attackDamage);
+                    this.attackCooldown = this.attackCooldownMax;
+                    this.lastDamageDealt = this.attackDamage;
+                }
             }
 
             // Occasionally try to reposition to a different adjacent tile
@@ -1219,9 +1225,15 @@ export class GreaterSlime {
 
         if (meleeRange <= 1) {
             if (this.attackCooldown <= 0 && player.isAlive && hasArrived) {
-                player.takeDamage(this.attackDamage);
-                this.attackCooldown = this.attackCooldownMax;
-                this.lastDamageDealt = this.attackDamage;
+                // Check if player parries the attack
+                if (player.tryParry && player.tryParry(this)) {
+                    // Parry successful - no damage dealt
+                    this.attackCooldown = this.attackCooldownMax;
+                } else {
+                    player.takeDamage(this.attackDamage);
+                    this.attackCooldown = this.attackCooldownMax;
+                    this.lastDamageDealt = this.attackDamage;
+                }
             }
 
             // Occasionally try to reposition to a different adjacent tile
