@@ -312,7 +312,7 @@ export class Game {
 
                         // Get slime screen position (matching renderer)
                         const addScreen = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
-                        const addScreenY = addScreen.y - 8; // Slime height offset
+                        const addScreenY = addScreen.y - 18; // Slime height offset
 
                         // Screen-space distance check
                         const screenDx = mouse.x - addScreen.x;
@@ -334,7 +334,7 @@ export class Game {
                         if (!greater.isAlive) continue;
 
                         const greaterScreen = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
-                        const greaterScreenY = greaterScreen.y - 12; // Greater slime height offset
+                        const greaterScreenY = greaterScreen.y - 22; // Greater slime height offset
 
                         const screenDx = mouse.x - greaterScreen.x;
                         const screenDy = mouse.y - greaterScreenY;
@@ -1022,7 +1022,7 @@ export class Game {
                 if (!add.isAlive) continue;
 
                 const addScreen = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
-                const addScreenY = addScreen.y - 8; // Slime height offset
+                const addScreenY = addScreen.y - 18; // Slime height offset
 
                 const screenDx = mouse.x - addScreen.x;
                 const screenDy = mouse.y - addScreenY;
@@ -1042,7 +1042,7 @@ export class Game {
                 if (!greater.isAlive) continue;
 
                 const greaterScreen = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
-                const greaterScreenY = greaterScreen.y - 12;
+                const greaterScreenY = greaterScreen.y - 22;
 
                 const screenDx = mouse.x - greaterScreen.x;
                 const screenDy = mouse.y - greaterScreenY;

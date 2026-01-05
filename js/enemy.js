@@ -1032,8 +1032,8 @@ export class GreaterSlime {
         this.smoothX = tileX;
         this.smoothY = tileY;
         this.smoothSpeed = 6;
-        this.health = 120;
-        this.maxHealth = 120;
+        this.health = 240;
+        this.maxHealth = 240;
         this.isAlive = true;
         this.hitFlashTimer = 0;
         this.hitFlashDuration = 0.1;
@@ -1144,30 +1144,118 @@ export class GreaterSlime {
         if (this.moveTimer < this.moveCooldown) return;
         this.moveTimer = 0;
 
-        const dx = player.tileX - this.tileX;
-        const dy = player.tileY - this.tileY;
-
-        let moveX = 0, moveY = 0;
-        if (Math.abs(dx) > Math.abs(dy)) {
-            moveX = dx > 0 ? 1 : -1;
-        } else if (dy !== 0) {
-            moveY = dy > 0 ? 1 : -1;
-        }
-
-        const newX = this.tileX + moveX;
-        const newY = this.tileY + moveY;
-
-        if (gameMap.isWalkable(newX, newY)) {
-            let blocked = false;
+        // Helper to check if a tile is blocked
+        const isBlocked = (tx, ty) => {
+            if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return true;
+            if (!gameMap.isWalkable(tx, ty)) return true;
+            if (player.tileX === tx && player.tileY === ty) return true;
             for (const other of allAdds) {
-                if (other !== this && other.isAlive && other.tileX === newX && other.tileY === newY) {
-                    blocked = true;
+                if (other === this || !other.isAlive) continue;
+                if (other.tileX === tx && other.tileY === ty) return true;
+            }
+            return false;
+        };
+
+        // Find the nearest empty tile adjacent to player (our goal)
+        const adjacentToPlayer = [
+            { x: player.tileX + 1, y: player.tileY },
+            { x: player.tileX - 1, y: player.tileY },
+            { x: player.tileX, y: player.tileY + 1 },
+            { x: player.tileX, y: player.tileY - 1 },
+            { x: player.tileX + 1, y: player.tileY + 1 },
+            { x: player.tileX + 1, y: player.tileY - 1 },
+            { x: player.tileX - 1, y: player.tileY + 1 },
+            { x: player.tileX - 1, y: player.tileY - 1 }
+        ];
+
+        // Find best empty spot adjacent to player
+        let bestTarget = null;
+        let bestDist = Infinity;
+        for (const spot of adjacentToPlayer) {
+            let occupied = false;
+            for (const other of allAdds) {
+                if (other === this || !other.isAlive) continue;
+                if (other.tileX === spot.x && other.tileY === spot.y) {
+                    occupied = true;
                     break;
                 }
             }
-            if (!blocked) {
-                this.tileX = newX;
-                this.tileY = newY;
+            if (occupied) continue;
+            if (!gameMap.isWalkable(spot.x, spot.y)) continue;
+
+            const dist = Math.abs(spot.x - this.tileX) + Math.abs(spot.y - this.tileY);
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestTarget = spot;
+            }
+        }
+
+        // If no empty spot, just target player position
+        const targetX = bestTarget ? bestTarget.x : player.tileX;
+        const targetY = bestTarget ? bestTarget.y : player.tileY;
+
+        const dx = targetX - this.tileX;
+        const dy = targetY - this.tileY;
+
+        // Build list of movement options
+        const options = [
+            { x: Math.sign(dx), y: 0 },
+            { x: 0, y: Math.sign(dy) },
+            { x: Math.sign(dx), y: Math.sign(dy) },
+            { x: 0, y: Math.sign(dy) || 1 },
+            { x: 0, y: Math.sign(dy) || -1 },
+            { x: Math.sign(dx) || 1, y: 0 },
+            { x: Math.sign(dx) || -1, y: 0 },
+            { x: 1, y: 1 }, { x: 1, y: -1 },
+            { x: -1, y: 1 }, { x: -1, y: -1 }
+        ].filter(o => o.x !== 0 || o.y !== 0);
+
+        // Remove duplicates
+        const seen = new Set();
+        const uniqueOptions = [];
+        for (const opt of options) {
+            const key = `${opt.x},${opt.y}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueOptions.push(opt);
+            }
+        }
+
+        // Sort by distance to target after move
+        uniqueOptions.sort((a, b) => {
+            const distA = Math.abs(targetX - (this.tileX + a.x)) + Math.abs(targetY - (this.tileY + a.y));
+            const distB = Math.abs(targetX - (this.tileX + b.x)) + Math.abs(targetY - (this.tileY + b.y));
+            return distA - distB;
+        });
+
+        // Try each option until one works
+        for (const opt of uniqueOptions) {
+            const newTileX = this.tileX + opt.x;
+            const newTileY = this.tileY + opt.y;
+
+            if (!isBlocked(newTileX, newTileY)) {
+                this.tileX = newTileX;
+                this.tileY = newTileY;
+                return;
+            }
+        }
+
+        // No path found - wander randomly
+        const wanderOptions = [
+            { x: 1, y: 0 }, { x: -1, y: 0 },
+            { x: 0, y: 1 }, { x: 0, y: -1 }
+        ];
+        for (let i = wanderOptions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [wanderOptions[i], wanderOptions[j]] = [wanderOptions[j], wanderOptions[i]];
+        }
+        for (const opt of wanderOptions) {
+            const newTileX = this.tileX + opt.x;
+            const newTileY = this.tileY + opt.y;
+            if (!isBlocked(newTileX, newTileY)) {
+                this.tileX = newTileX;
+                this.tileY = newTileY;
+                return;
             }
         }
     }

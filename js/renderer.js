@@ -217,7 +217,7 @@ export class Renderer {
         // Offset by 0.5 to center in tile
         const pos = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
         const screenX = pos.x;
-        const screenY = pos.y - 8;
+        const screenY = pos.y - 18; // Raised higher
 
         ctx.save();
 
@@ -227,7 +227,7 @@ export class Renderer {
             ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.ellipse(screenX, pos.y + 2, 12, 5, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, pos.y - 8, 12, 5, 0, 0, Math.PI * 2);
             ctx.stroke();
         } else if (isHovered) {
             // Hover highlight (yellow/gold outline)
@@ -237,7 +237,7 @@ export class Renderer {
             ctx.shadowColor = '#ffdd66';
             ctx.shadowBlur = 8;
             ctx.beginPath();
-            ctx.ellipse(screenX, pos.y + 2, 12, 5, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, pos.y - 8, 12, 5, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
         }
@@ -245,7 +245,7 @@ export class Renderer {
         // Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(screenX, pos.y + 2, 8, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, pos.y - 8, 8, 4, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Body - small slime creature
@@ -291,7 +291,7 @@ export class Renderer {
         const ctx = this.ctx;
         const pos = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
         const screenX = pos.x;
-        const screenY = pos.y - 12; // Slightly higher than regular slime
+        const screenY = pos.y - 22; // Raised higher
 
         ctx.save();
 
@@ -301,7 +301,7 @@ export class Renderer {
             ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.ellipse(screenX, pos.y + 2, 18, 7, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, pos.y - 8, 18, 7, 0, 0, Math.PI * 2);
             ctx.stroke();
         } else if (isHovered) {
             const hoverPulse = Math.sin(this.time * 6) * 0.2 + 0.8;
@@ -310,7 +310,7 @@ export class Renderer {
             ctx.shadowColor = '#ffdd66';
             ctx.shadowBlur = 8;
             ctx.beginPath();
-            ctx.ellipse(screenX, pos.y + 2, 18, 7, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, pos.y - 8, 18, 7, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
         }
@@ -318,7 +318,7 @@ export class Renderer {
         // Shadow (larger)
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(screenX, pos.y + 2, 14, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, pos.y - 8, 14, 6, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Body - bigger purple/magenta slime

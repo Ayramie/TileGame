@@ -1348,28 +1348,11 @@ export class Player {
             const newTileX = Math.round(newX);
             const newTileY = Math.round(newY);
 
-            // Check for collision with non-target enemies
-            let hitObstacle = false;
-            for (const enemy of enemies) {
-                if (!enemy.isAlive) continue;
-                if (enemy === this.chargeTarget) continue; // Don't collide with our target
-
-                if (enemy.occupiesTile(newTileX, newTileY)) {
-                    // Hit a non-target enemy - stop here
-                    this.x = this.tileX; // Stay at current tile
-                    this.y = this.tileY;
-                    hitObstacle = true;
-                    this.endCharge(false); // Failed to reach target
-                    break;
-                }
-            }
-
-            if (!hitObstacle) {
-                this.x = newX;
-                this.y = newY;
-                this.tileX = newTileX;
-                this.tileY = newTileY;
-            }
+            // Move through all units (ignore collision)
+            this.x = newX;
+            this.y = newY;
+            this.tileX = newTileX;
+            this.tileY = newTileY;
         }
 
         // Update target tile to match position
