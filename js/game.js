@@ -94,6 +94,20 @@ export class Game {
                 this.toggleMenuOverlay(false);
             }
         });
+
+        // Main menu button
+        const mainMenuBtn = document.getElementById('main-menu-btn');
+        if (mainMenuBtn) {
+            mainMenuBtn.addEventListener('click', () => this.returnToMainMenu());
+        }
+    }
+
+    returnToMainMenu() {
+        this.gameState = 'menu';
+        this.toggleMenuOverlay(false);
+        // Hide the main menu button when in menu
+        const btn = document.getElementById('main-menu-btn');
+        if (btn) btn.style.display = 'none';
     }
 
     toggleMenuOverlay(forceState = null) {
@@ -114,6 +128,10 @@ export class Game {
     initGame(mode) {
         this.gameMode = mode;
         this.gameState = 'playing';
+
+        // Show main menu button during gameplay
+        const btn = document.getElementById('main-menu-btn');
+        if (btn) btn.style.display = 'block';
 
         this.gameMap = new GameMap();
         this.player = new Player(5, 5);
@@ -225,19 +243,9 @@ export class Game {
     }
 
     update(deltaTime) {
-        // Escape key to toggle game guide overlay
-        if (this.input.wasKeyJustPressed('escape')) {
-            this.toggleMenuOverlay();
-        }
-
         // C key to toggle camera mode (isometric/cardinal)
         if (this.input.wasKeyJustPressed('c')) {
             toggleCameraMode();
-        }
-
-        // If menu overlay is open, don't process game input
-        if (this.menuOverlayOpen) {
-            return;
         }
 
         // Tab key to target closest enemy (only during gameplay)
@@ -417,6 +425,11 @@ export class Game {
                     // Clear target when clicking empty space
                     this.player.clearTarget();
                 }
+            }
+
+            // Escape to clear target
+            if (this.input.wasKeyJustPressed('escape')) {
+                this.player.clearTarget();
             }
 
             // Q for cleave - hold to aim at cursor, release to fire

@@ -45,6 +45,27 @@ body {
     border: 1px solid #3a3a5a;
 }
 
+#main-menu-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #aaa;
+    border: 1px solid #3a3a5a;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    display: none; /* Hidden until gameplay starts */
+}
+
+#main-menu-btn:hover {
+    background: rgba(60, 60, 100, 0.8);
+    color: #fff;
+    border-color: #6666aa;
+}
+
 #ability-bar {
     display: flex;
     gap: 10px;
