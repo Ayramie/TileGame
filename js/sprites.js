@@ -1,4 +1,4 @@
-// Player sprite using canvas drawing - small chibi knight
+// Player sprite using canvas drawing - cute chibi knight
 export class PlayerSprite {
     constructor() {
         this.currentFrame = 0;
@@ -28,7 +28,7 @@ export class PlayerSprite {
                 this.animationTimer = 0;
                 this.currentFrame = (this.currentFrame + 1) % this.numFrames;
             }
-            this.bobOffset = Math.sin(this.currentFrame * Math.PI / 2) * 1;
+            this.bobOffset = Math.sin(this.currentFrame * Math.PI / 2) * 2;
         } else {
             this.currentFrame = 0;
             this.animationTimer = 0;
@@ -53,122 +53,247 @@ export class PlayerSprite {
 
         // Colors
         const armorMain = '#4a7fc7';
-        const armorDark = '#2d5a9e';
-        const skinTone = '#f0c8a0';
-        const metalLight = '#d8d8d8';
+        const armorDark = '#3a5f97';
+        const skinTone = '#ffd5b5';
+        const hairColor = '#5c3a21';
+        const metalLight = '#e8e8e8';
+        const metalDark = '#a0a0a0';
         const gold = '#ffd700';
         const outline = '#1a1a2e';
+        const cheekPink = '#ffb5b5';
 
         // Walking leg animation
         const legOffset = this.isMoving ? Math.sin(this.currentFrame * Math.PI / 2) * 2 : 0;
 
-        // === LEGS ===
+        // === OVERSIZED SWORD (behind character when facing certain directions) ===
+        if (facingUp) {
+            this.drawSword(ctx, screenX, y, outline, metalLight, metalDark, gold);
+        }
+
+        // === TINY LEGS ===
+        // Left leg
         ctx.fillStyle = armorDark;
-        ctx.fillRect(screenX - 4, y - 1 + legOffset, 3, 6);
-        ctx.fillRect(screenX + 1, y - 1 - legOffset, 3, 6);
-
-        // Boots
-        ctx.fillStyle = '#3d2817';
-        ctx.fillRect(screenX - 4, y + 4 + legOffset, 4, 3);
-        ctx.fillRect(screenX, y + 4 - legOffset, 4, 3);
-
-        // === BODY ===
-        ctx.fillStyle = outline;
         ctx.beginPath();
-        ctx.ellipse(screenX, y - 8, 7, 8, 0, 0, Math.PI * 2);
+        ctx.roundRect(screenX - 5, y + 2 + legOffset, 4, 6, 2);
         ctx.fill();
 
+        // Right leg
+        ctx.beginPath();
+        ctx.roundRect(screenX + 1, y + 2 - legOffset, 4, 6, 2);
+        ctx.fill();
+
+        // Boots
+        ctx.fillStyle = '#4a3020';
+        ctx.beginPath();
+        ctx.roundRect(screenX - 6, y + 6 + legOffset, 5, 3, 1);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.roundRect(screenX + 1, y + 6 - legOffset, 5, 3, 1);
+        ctx.fill();
+
+        // === TINY BODY ===
+        // Body outline
+        ctx.fillStyle = outline;
+        ctx.beginPath();
+        ctx.roundRect(screenX - 6, y - 8, 12, 12, 3);
+        ctx.fill();
+
+        // Body armor
         ctx.fillStyle = armorMain;
         ctx.beginPath();
-        ctx.ellipse(screenX, y - 8, 6, 7, 0, 0, Math.PI * 2);
+        ctx.roundRect(screenX - 5, y - 7, 10, 10, 2);
+        ctx.fill();
+
+        // Armor highlight
+        ctx.fillStyle = '#5a9fd7';
+        ctx.beginPath();
+        ctx.roundRect(screenX - 4, y - 6, 4, 6, 1);
         ctx.fill();
 
         // Belt
         ctx.fillStyle = '#4a3020';
-        ctx.fillRect(screenX - 5, y - 3, 10, 2);
+        ctx.fillRect(screenX - 5, y + 1, 10, 2);
         ctx.fillStyle = gold;
         ctx.beginPath();
-        ctx.arc(screenX, y - 2, 1.5, 0, Math.PI * 2);
+        ctx.arc(screenX, y + 2, 1.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // === SWORD (right side) ===
-        const swordX = screenX + 7;
-        const swordY = y - 10;
-
-        ctx.fillStyle = metalLight;
-        ctx.fillRect(swordX - 1, swordY - 12, 2, 10);
-        // Tip
-        ctx.beginPath();
-        ctx.moveTo(swordX - 1, swordY - 12);
-        ctx.lineTo(swordX, swordY - 15);
-        ctx.lineTo(swordX + 1, swordY - 12);
-        ctx.fill();
-
-        // Guard
-        ctx.fillStyle = gold;
-        ctx.fillRect(swordX - 3, swordY - 2, 6, 2);
-
-        // Handle
-        ctx.fillStyle = '#5c3a21';
-        ctx.fillRect(swordX - 1, swordY, 2, 4);
-
-        // === SHIELD (left side) ===
-        if (!facingUp) {
-            const shieldX = screenX - 9;
-            const shieldY = y - 9;
-
-            ctx.fillStyle = outline;
-            ctx.beginPath();
-            ctx.ellipse(shieldX, shieldY, 5, 6, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = armorMain;
-            ctx.beginPath();
-            ctx.ellipse(shieldX, shieldY, 4, 5, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = gold;
-            ctx.beginPath();
-            ctx.arc(shieldX, shieldY, 2, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // === HEAD ===
+        // === HUGE HEAD ===
+        // Head outline
         ctx.fillStyle = outline;
         ctx.beginPath();
-        ctx.arc(screenX, y - 20, 7, 0, Math.PI * 2);
+        ctx.arc(screenX, y - 18, 12, 0, Math.PI * 2);
         ctx.fill();
 
+        // Head skin
         ctx.fillStyle = skinTone;
         ctx.beginPath();
-        ctx.arc(screenX, y - 20, 6, 0, Math.PI * 2);
+        ctx.arc(screenX, y - 18, 11, 0, Math.PI * 2);
         ctx.fill();
 
-        // Hair
+        // Hair (on top of head)
         if (!facingUp) {
-            ctx.fillStyle = '#5c3a21';
+            ctx.fillStyle = hairColor;
             ctx.beginPath();
-            ctx.arc(screenX, y - 23, 5, Math.PI, Math.PI * 2);
+            ctx.arc(screenX, y - 22, 9, Math.PI, Math.PI * 2);
+            ctx.fill();
+            // Hair tuft
+            ctx.beginPath();
+            ctx.ellipse(screenX + 3, y - 30, 3, 4, 0.3, 0, Math.PI * 2);
             ctx.fill();
         } else {
-            ctx.fillStyle = '#5c3a21';
+            // Back of head when facing up
+            ctx.fillStyle = hairColor;
             ctx.beginPath();
-            ctx.arc(screenX, y - 20, 5, 0, Math.PI * 2);
+            ctx.arc(screenX, y - 18, 10, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // Eyes
+        // === FACE (only when not facing up) ===
         if (!facingUp) {
-            ctx.fillStyle = '#222';
+            // Big eyes
+            const eyeOffsetX = dir === 'down' ? 0 : 2;
+
+            // Eye whites
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(screenX - 4 + eyeOffsetX, y - 18, 4, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
             if (dir === 'down') {
-                ctx.fillRect(screenX - 3, y - 20, 2, 2);
-                ctx.fillRect(screenX + 1, y - 20, 2, 2);
-            } else {
-                ctx.fillRect(screenX + 1, y - 20, 2, 2);
+                ctx.beginPath();
+                ctx.ellipse(screenX + 4 + eyeOffsetX, y - 18, 4, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
             }
+
+            // Pupils
+            ctx.fillStyle = '#2a1a0a';
+            ctx.beginPath();
+            ctx.ellipse(screenX - 3 + eyeOffsetX, y - 17, 2.5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (dir === 'down') {
+                ctx.beginPath();
+                ctx.ellipse(screenX + 5 + eyeOffsetX, y - 17, 2.5, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Eye shine (sparkle!)
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(screenX - 2 + eyeOffsetX, y - 19, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            if (dir === 'down') {
+                ctx.beginPath();
+                ctx.arc(screenX + 6 + eyeOffsetX, y - 19, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Small secondary shine
+            ctx.beginPath();
+            ctx.arc(screenX - 4 + eyeOffsetX, y - 16, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            if (dir === 'down') {
+                ctx.beginPath();
+                ctx.arc(screenX + 4 + eyeOffsetX, y - 16, 0.8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Rosy cheeks
+            ctx.fillStyle = cheekPink;
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.ellipse(screenX - 7, y - 14, 2.5, 1.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (dir === 'down') {
+                ctx.beginPath();
+                ctx.ellipse(screenX + 7, y - 14, 2.5, 1.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Small cute mouth
+            ctx.fillStyle = '#c97070';
+            ctx.beginPath();
+            ctx.arc(screenX + 1, y - 12, 1.5, 0, Math.PI);
+            ctx.fill();
+        }
+
+        // === OVERSIZED SWORD (in front when not facing up) ===
+        if (!facingUp) {
+            this.drawSword(ctx, screenX, y, outline, metalLight, metalDark, gold);
         }
 
         ctx.restore();
+    }
+
+    drawSword(ctx, screenX, y, outline, metalLight, metalDark, gold) {
+        const swordX = screenX + 10;
+        const swordY = y - 5;
+
+        // Sword blade outline
+        ctx.fillStyle = outline;
+        ctx.beginPath();
+        ctx.roundRect(swordX - 3, swordY - 28, 6, 24, 1);
+        ctx.fill();
+        // Blade tip
+        ctx.beginPath();
+        ctx.moveTo(swordX - 3, swordY - 28);
+        ctx.lineTo(swordX, swordY - 35);
+        ctx.lineTo(swordX + 3, swordY - 28);
+        ctx.closePath();
+        ctx.fill();
+
+        // Sword blade
+        ctx.fillStyle = metalLight;
+        ctx.beginPath();
+        ctx.roundRect(swordX - 2, swordY - 27, 4, 22, 1);
+        ctx.fill();
+        // Blade tip inner
+        ctx.beginPath();
+        ctx.moveTo(swordX - 2, swordY - 27);
+        ctx.lineTo(swordX, swordY - 33);
+        ctx.lineTo(swordX + 2, swordY - 27);
+        ctx.closePath();
+        ctx.fill();
+
+        // Blade shine
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(swordX - 1, swordY - 26, 1, 18);
+        ctx.globalAlpha = 1;
+
+        // Blade edge shadow
+        ctx.fillStyle = metalDark;
+        ctx.fillRect(swordX + 1, swordY - 26, 1, 20);
+
+        // Guard (crossguard)
+        ctx.fillStyle = outline;
+        ctx.beginPath();
+        ctx.roundRect(swordX - 6, swordY - 5, 12, 4, 1);
+        ctx.fill();
+        ctx.fillStyle = gold;
+        ctx.beginPath();
+        ctx.roundRect(swordX - 5, swordY - 4, 10, 2, 1);
+        ctx.fill();
+
+        // Handle
+        ctx.fillStyle = '#5c3a21';
+        ctx.beginPath();
+        ctx.roundRect(swordX - 2, swordY - 1, 4, 8, 1);
+        ctx.fill();
+
+        // Handle wrap
+        ctx.fillStyle = '#4a2a15';
+        ctx.fillRect(swordX - 2, swordY + 1, 4, 1);
+        ctx.fillRect(swordX - 2, swordY + 4, 4, 1);
+
+        // Pommel
+        ctx.fillStyle = gold;
+        ctx.beginPath();
+        ctx.arc(swordX, swordY + 9, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = outline;
+        ctx.beginPath();
+        ctx.arc(swordX, swordY + 9, 1, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     isLoaded() {
