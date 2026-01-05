@@ -733,6 +733,13 @@ export class Add {
         this.hitFlashTimer = 0;
         this.hitFlashDuration = 0.1;
 
+        // Death animation
+        this.isDying = false;
+        this.deathTimer = 0;
+        this.deathDuration = 0.3;
+        this.deathScale = 1;
+        this.deathAlpha = 1;
+
         // Movement
         this.moveSpeed = 3.5;
         this.moveTimer = 0;
@@ -761,6 +768,18 @@ export class Add {
 
     update(deltaTime, player, gameMap, allAdds = []) {
         if (!this.isAlive) return;
+
+        // Death animation
+        if (this.isDying) {
+            this.deathTimer += deltaTime;
+            const progress = Math.min(this.deathTimer / this.deathDuration, 1);
+            this.deathScale = 1 - progress * 0.5; // Shrink to 50%
+            this.deathAlpha = 1 - progress; // Fade out
+            if (progress >= 1) {
+                this.isAlive = false;
+            }
+            return;
+        }
 
         if (this.hitFlashTimer > 0) {
             this.hitFlashTimer -= deltaTime;
@@ -962,13 +981,13 @@ export class Add {
     }
 
     takeDamage(amount) {
-        if (!this.isAlive) return;
+        if (!this.isAlive || this.isDying) return;
         this.health -= amount;
         this.hitFlashTimer = this.hitFlashDuration;
         this.isAggroed = true; // Aggro when hit
         if (this.health <= 0) {
             this.health = 0;
-            this.isAlive = false;
+            this.isDying = true; // Start death animation
         }
     }
 
@@ -1044,6 +1063,13 @@ export class GreaterSlime {
         this.hitFlashTimer = 0;
         this.hitFlashDuration = 0.1;
 
+        // Death animation
+        this.isDying = false;
+        this.deathTimer = 0;
+        this.deathDuration = 0.35;
+        this.deathScale = 1;
+        this.deathAlpha = 1;
+
         // Movement
         this.moveSpeed = 2.5; // Slower than regular slime
         this.moveTimer = 0;
@@ -1076,6 +1102,18 @@ export class GreaterSlime {
 
     update(deltaTime, player, gameMap, allAdds = []) {
         if (!this.isAlive) return;
+
+        // Death animation
+        if (this.isDying) {
+            this.deathTimer += deltaTime;
+            const progress = Math.min(this.deathTimer / this.deathDuration, 1);
+            this.deathScale = 1 - progress * 0.5;
+            this.deathAlpha = 1 - progress;
+            if (progress >= 1) {
+                this.isAlive = false;
+            }
+            return;
+        }
 
         if (this.hitFlashTimer > 0) {
             this.hitFlashTimer -= deltaTime;
@@ -1267,13 +1305,13 @@ export class GreaterSlime {
     }
 
     takeDamage(amount) {
-        if (!this.isAlive) return;
+        if (!this.isAlive || this.isDying) return;
         this.health -= amount;
         this.hitFlashTimer = this.hitFlashDuration;
         this.isAggroed = true;
         if (this.health <= 0) {
             this.health = 0;
-            this.isAlive = false;
+            this.isDying = true; // Start death animation
         }
     }
 

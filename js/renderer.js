@@ -221,10 +221,15 @@ export class Renderer {
     }
 
     drawAdd(add, isTargeted = false, isHovered = false) {
-        if (!add.isAlive) return;
+        if (!add.isAlive && !add.isDying) return;
 
         const ctx = this.ctx;
-        const scale = SLIME_SCALE;
+        const scale = SLIME_SCALE * (add.deathScale || 1);
+
+        // Apply death fade
+        if (add.isDying) {
+            ctx.globalAlpha = add.deathAlpha || 1;
+        }
         // Offset by 0.5 to center in tile
         const pos = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
         const screenX = pos.x;
@@ -286,20 +291,33 @@ export class Renderer {
 
         ctx.restore();
 
+        // Reset alpha after death animation
+        if (add.isDying) {
+            ctx.globalAlpha = 1;
+        }
+
         // Stun effect - spinning stars
-        if (add.isStunned) {
+        if (add.isStunned && !add.isDying) {
             this.drawStunEffect(screenX, screenY - 20 * scale, 12 * scale);
         }
 
-        // Health bar
-        this.drawHealthBar(screenX - 12 * scale, screenY - 18 * scale, 24 * scale, 3, add.health, add.maxHealth, '#55aa55');
+        // Health bar (hide during death)
+        if (!add.isDying) {
+            this.drawHealthBar(screenX - 12 * scale, screenY - 18 * scale, 24 * scale, 3, add.health, add.maxHealth, '#55aa55');
+        }
     }
 
     drawGreaterSlime(greater, isTargeted = false, isHovered = false) {
-        if (!greater.isAlive) return;
+        if (!greater.isAlive && !greater.isDying) return;
 
         const ctx = this.ctx;
-        const scale = GREATER_SLIME_SCALE;
+        const scale = GREATER_SLIME_SCALE * (greater.deathScale || 1);
+
+        // Apply death fade
+        if (greater.isDying) {
+            ctx.globalAlpha = greater.deathAlpha || 1;
+        }
+
         const pos = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
         const screenX = pos.x;
         const screenY = pos.y - 22 * scale;
@@ -382,13 +400,20 @@ export class Renderer {
 
         ctx.restore();
 
+        // Reset alpha after death animation
+        if (greater.isDying) {
+            ctx.globalAlpha = 1;
+        }
+
         // Stun effect
-        if (greater.isStunned) {
+        if (greater.isStunned && !greater.isDying) {
             this.drawStunEffect(screenX, screenY - 25 * scale, 15 * scale);
         }
 
-        // Health bar (wider)
-        this.drawHealthBar(screenX - 18 * scale, screenY - 24 * scale, 36 * scale, 4, greater.health, greater.maxHealth, '#8855aa');
+        // Health bar (wider) - hide during death
+        if (!greater.isDying) {
+            this.drawHealthBar(screenX - 18 * scale, screenY - 24 * scale, 36 * scale, 4, greater.health, greater.maxHealth, '#8855aa');
+        }
     }
 
     drawAddTelegraph(add) {

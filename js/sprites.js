@@ -118,34 +118,34 @@ export class PlayerSprite {
         ctx.arc(screenX, y + 2, 1.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // === HUGE HEAD ===
+        // === HEAD ===
         // Head outline
         ctx.fillStyle = outline;
         ctx.beginPath();
-        ctx.arc(screenX, y - 18, 12, 0, Math.PI * 2);
+        ctx.arc(screenX, y - 16, 10, 0, Math.PI * 2);
         ctx.fill();
 
         // Head skin
         ctx.fillStyle = skinTone;
         ctx.beginPath();
-        ctx.arc(screenX, y - 18, 11, 0, Math.PI * 2);
+        ctx.arc(screenX, y - 16, 9, 0, Math.PI * 2);
         ctx.fill();
 
         // Hair (on top of head)
         if (!facingUp) {
             ctx.fillStyle = hairColor;
             ctx.beginPath();
-            ctx.arc(screenX, y - 22, 9, Math.PI, Math.PI * 2);
+            ctx.arc(screenX, y - 19, 7, Math.PI, Math.PI * 2);
             ctx.fill();
             // Hair tuft
             ctx.beginPath();
-            ctx.ellipse(screenX + 3, y - 30, 3, 4, 0.3, 0, Math.PI * 2);
+            ctx.ellipse(screenX + 2, y - 25, 2, 3, 0.3, 0, Math.PI * 2);
             ctx.fill();
         } else {
             // Back of head when facing up
             ctx.fillStyle = hairColor;
             ctx.beginPath();
-            ctx.arc(screenX, y - 18, 10, 0, Math.PI * 2);
+            ctx.arc(screenX, y - 16, 8, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -157,42 +157,33 @@ export class PlayerSprite {
             // Eye whites
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.ellipse(screenX - 4 + eyeOffsetX, y - 18, 4, 5, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX - 3 + eyeOffsetX, y - 16, 3, 4, 0, 0, Math.PI * 2);
             ctx.fill();
             if (dir === 'down') {
                 ctx.beginPath();
-                ctx.ellipse(screenX + 4 + eyeOffsetX, y - 18, 4, 5, 0, 0, Math.PI * 2);
+                ctx.ellipse(screenX + 3 + eyeOffsetX, y - 16, 3, 4, 0, 0, Math.PI * 2);
                 ctx.fill();
             }
 
             // Pupils
             ctx.fillStyle = '#2a1a0a';
             ctx.beginPath();
-            ctx.ellipse(screenX - 3 + eyeOffsetX, y - 17, 2.5, 3, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX - 2 + eyeOffsetX, y - 15, 2, 2.5, 0, 0, Math.PI * 2);
             ctx.fill();
             if (dir === 'down') {
                 ctx.beginPath();
-                ctx.ellipse(screenX + 5 + eyeOffsetX, y - 17, 2.5, 3, 0, 0, Math.PI * 2);
+                ctx.ellipse(screenX + 4 + eyeOffsetX, y - 15, 2, 2.5, 0, 0, Math.PI * 2);
                 ctx.fill();
             }
 
             // Eye shine (sparkle!)
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.arc(screenX - 2 + eyeOffsetX, y - 19, 1.5, 0, Math.PI * 2);
+            ctx.arc(screenX - 1 + eyeOffsetX, y - 17, 1.2, 0, Math.PI * 2);
             ctx.fill();
             if (dir === 'down') {
                 ctx.beginPath();
-                ctx.arc(screenX + 6 + eyeOffsetX, y - 19, 1.5, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            // Small secondary shine
-            ctx.beginPath();
-            ctx.arc(screenX - 4 + eyeOffsetX, y - 16, 0.8, 0, Math.PI * 2);
-            ctx.fill();
-            if (dir === 'down') {
-                ctx.beginPath();
-                ctx.arc(screenX + 4 + eyeOffsetX, y - 16, 0.8, 0, Math.PI * 2);
+                ctx.arc(screenX + 5 + eyeOffsetX, y - 17, 1.2, 0, Math.PI * 2);
                 ctx.fill();
             }
 
@@ -200,11 +191,11 @@ export class PlayerSprite {
             ctx.fillStyle = cheekPink;
             ctx.globalAlpha = 0.5;
             ctx.beginPath();
-            ctx.ellipse(screenX - 7, y - 14, 2.5, 1.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX - 6, y - 13, 2, 1.2, 0, 0, Math.PI * 2);
             ctx.fill();
             if (dir === 'down') {
                 ctx.beginPath();
-                ctx.ellipse(screenX + 7, y - 14, 2.5, 1.5, 0, 0, Math.PI * 2);
+                ctx.ellipse(screenX + 6, y - 13, 2, 1.2, 0, 0, Math.PI * 2);
                 ctx.fill();
             }
             ctx.globalAlpha = 1;
@@ -212,7 +203,7 @@ export class PlayerSprite {
             // Small cute mouth
             ctx.fillStyle = '#c97070';
             ctx.beginPath();
-            ctx.arc(screenX + 1, y - 12, 1.5, 0, Math.PI);
+            ctx.arc(screenX + 1, y - 11, 1.2, 0, Math.PI);
             ctx.fill();
         }
 
@@ -225,74 +216,61 @@ export class PlayerSprite {
     }
 
     drawSword(ctx, screenX, y, outline, metalLight, metalDark, gold) {
-        const swordX = screenX + 10;
-        const swordY = y - 5;
+        const swordX = screenX + 8;
+        const swordY = y - 3;
 
         // Sword blade outline
         ctx.fillStyle = outline;
         ctx.beginPath();
-        ctx.roundRect(swordX - 3, swordY - 28, 6, 24, 1);
+        ctx.roundRect(swordX - 2, swordY - 20, 4, 17, 1);
         ctx.fill();
         // Blade tip
         ctx.beginPath();
-        ctx.moveTo(swordX - 3, swordY - 28);
-        ctx.lineTo(swordX, swordY - 35);
-        ctx.lineTo(swordX + 3, swordY - 28);
+        ctx.moveTo(swordX - 2, swordY - 20);
+        ctx.lineTo(swordX, swordY - 25);
+        ctx.lineTo(swordX + 2, swordY - 20);
         ctx.closePath();
         ctx.fill();
 
         // Sword blade
         ctx.fillStyle = metalLight;
         ctx.beginPath();
-        ctx.roundRect(swordX - 2, swordY - 27, 4, 22, 1);
+        ctx.roundRect(swordX - 1, swordY - 19, 2, 15, 1);
         ctx.fill();
         // Blade tip inner
         ctx.beginPath();
-        ctx.moveTo(swordX - 2, swordY - 27);
-        ctx.lineTo(swordX, swordY - 33);
-        ctx.lineTo(swordX + 2, swordY - 27);
+        ctx.moveTo(swordX - 1, swordY - 19);
+        ctx.lineTo(swordX, swordY - 23);
+        ctx.lineTo(swordX + 1, swordY - 19);
         ctx.closePath();
         ctx.fill();
 
         // Blade shine
         ctx.fillStyle = '#ffffff';
         ctx.globalAlpha = 0.6;
-        ctx.fillRect(swordX - 1, swordY - 26, 1, 18);
+        ctx.fillRect(swordX - 0.5, swordY - 18, 1, 12);
         ctx.globalAlpha = 1;
-
-        // Blade edge shadow
-        ctx.fillStyle = metalDark;
-        ctx.fillRect(swordX + 1, swordY - 26, 1, 20);
 
         // Guard (crossguard)
         ctx.fillStyle = outline;
         ctx.beginPath();
-        ctx.roundRect(swordX - 6, swordY - 5, 12, 4, 1);
+        ctx.roundRect(swordX - 4, swordY - 3, 8, 3, 1);
         ctx.fill();
         ctx.fillStyle = gold;
         ctx.beginPath();
-        ctx.roundRect(swordX - 5, swordY - 4, 10, 2, 1);
+        ctx.roundRect(swordX - 3, swordY - 2, 6, 1.5, 1);
         ctx.fill();
 
         // Handle
         ctx.fillStyle = '#5c3a21';
         ctx.beginPath();
-        ctx.roundRect(swordX - 2, swordY - 1, 4, 8, 1);
+        ctx.roundRect(swordX - 1.5, swordY, 3, 6, 1);
         ctx.fill();
-
-        // Handle wrap
-        ctx.fillStyle = '#4a2a15';
-        ctx.fillRect(swordX - 2, swordY + 1, 4, 1);
-        ctx.fillRect(swordX - 2, swordY + 4, 4, 1);
 
         // Pommel
         ctx.fillStyle = gold;
         ctx.beginPath();
-        ctx.arc(swordX, swordY + 9, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = outline;
-        ctx.beginPath();
-        ctx.arc(swordX, swordY + 9, 1, 0, Math.PI * 2);
+        ctx.arc(swordX, swordY + 7, 2, 0, Math.PI * 2);
         ctx.fill();
     }
 
