@@ -54,7 +54,7 @@ export class Game {
             cleave: 0,
             bladeStorm: 0,
             earthquake: 0,
-            leapSlam: 0,
+            charge: 0,
             potion: 0
         };
 
@@ -555,7 +555,7 @@ export class Game {
             if (this.prevCooldowns.earthquake > 0 && p.earthquakeCooldown <= 0) {
                 this.sound.playReady();
             }
-            if (this.prevCooldowns.leapSlam > 0 && p.leapSlamCooldown <= 0) {
+            if (this.prevCooldowns.charge > 0 && p.chargeCooldown <= 0) {
                 this.sound.playReady();
             }
             if (this.prevCooldowns.potion > 0 && p.healthPotionCooldown <= 0) {
@@ -565,7 +565,7 @@ export class Game {
             this.prevCooldowns.cleave = p.cleaveCooldown;
             this.prevCooldowns.bladeStorm = p.bladeStormCooldown;
             this.prevCooldowns.earthquake = p.earthquakeCooldown;
-            this.prevCooldowns.leapSlam = p.leapSlamCooldown;
+            this.prevCooldowns.charge = p.chargeCooldown;
             this.prevCooldowns.potion = p.healthPotionCooldown;
         } else {
             // Consume clicks so they don't queue up
