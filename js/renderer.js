@@ -276,8 +276,108 @@ export class Renderer {
 
         ctx.restore();
 
+        // Stun effect - spinning stars
+        if (add.isStunned) {
+            this.drawStunEffect(screenX, screenY - 20, 12);
+        }
+
         // Health bar
         this.drawHealthBar(screenX - 10, screenY - 18, 20, 3, add.health, add.maxHealth, '#55aa55');
+    }
+
+    drawGreaterSlime(greater, isTargeted = false, isHovered = false) {
+        if (!greater.isAlive) return;
+
+        const ctx = this.ctx;
+        const pos = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
+        const screenX = pos.x;
+        const screenY = pos.y - 12; // Slightly higher than regular slime
+
+        ctx.save();
+
+        // Target indicator
+        if (isTargeted) {
+            const targetPulse = Math.sin(this.time * 4) * 0.3 + 0.7;
+            ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(screenX, pos.y + 2, 18, 7, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        } else if (isHovered) {
+            const hoverPulse = Math.sin(this.time * 6) * 0.2 + 0.8;
+            ctx.strokeStyle = `rgba(255, 220, 100, ${hoverPulse})`;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#ffdd66';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.ellipse(screenX, pos.y + 2, 18, 7, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        // Shadow (larger)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(screenX, pos.y + 2, 14, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body - bigger purple/magenta slime
+        const hitFlash = greater.hitFlashTimer > 0;
+        const bodyColor = hitFlash ? '#ff6666' : '#8855aa';
+        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 16);
+        gradient.addColorStop(0, hitFlash ? '#ff8888' : '#aa77cc');
+        gradient.addColorStop(0.7, bodyColor);
+        gradient.addColorStop(1, hitFlash ? '#cc4444' : '#553377');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(screenX, screenY, 14, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Spikes/bumps on the slime to make it look more menacing
+        ctx.fillStyle = hitFlash ? '#cc4444' : '#664488';
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2 + Math.sin(this.time * 2) * 0.2;
+            const bumpX = screenX + Math.cos(angle) * 10;
+            const bumpY = screenY - 4 + Math.sin(angle) * 6;
+            ctx.beginPath();
+            ctx.arc(bumpX, bumpY, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Eyes (angrier, larger)
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(screenX - 5, screenY - 3, 3, 0, Math.PI * 2);
+        ctx.arc(screenX + 5, screenY - 3, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pupils
+        ctx.fillStyle = '#330033';
+        ctx.beginPath();
+        ctx.arc(screenX - 5, screenY - 3, 1.5, 0, Math.PI * 2);
+        ctx.arc(screenX + 5, screenY - 3, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Angry eyebrows
+        ctx.strokeStyle = '#330033';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(screenX - 8, screenY - 7);
+        ctx.lineTo(screenX - 3, screenY - 5);
+        ctx.moveTo(screenX + 8, screenY - 7);
+        ctx.lineTo(screenX + 3, screenY - 5);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Stun effect
+        if (greater.isStunned) {
+            this.drawStunEffect(screenX, screenY - 25, 15);
+        }
+
+        // Health bar (wider)
+        this.drawHealthBar(screenX - 15, screenY - 24, 30, 4, greater.health, greater.maxHealth, '#8855aa');
     }
 
     drawAddTelegraph(add) {
@@ -579,8 +679,65 @@ export class Renderer {
 
         ctx.restore();
 
+        // Stun effect - spinning stars
+        if (enemy.isStunned) {
+            this.drawStunEffect(screenX, screenY - 70 + floatOffset, 20);
+        }
+
         // Health bar above boss
         this.drawHealthBar(screenX - 25, screenY - 60 + floatOffset, 50, 6, enemy.health, enemy.maxHealth, '#9944ff');
+    }
+
+    drawStunEffect(x, y, radius) {
+        const ctx = this.ctx;
+        const starCount = 3;
+        const rotationSpeed = 4;
+
+        ctx.save();
+        ctx.translate(x, y);
+
+        for (let i = 0; i < starCount; i++) {
+            const angle = (i / starCount) * Math.PI * 2 + this.time * rotationSpeed;
+            const starX = Math.cos(angle) * radius;
+            const starY = Math.sin(angle) * radius * 0.4; // Flatten for isometric look
+
+            // Draw star
+            ctx.fillStyle = '#ffff00';
+            ctx.strokeStyle = '#ffaa00';
+            ctx.lineWidth = 1;
+
+            this.drawStar(starX, starY, 4, 5, 2.5);
+        }
+
+        ctx.restore();
+    }
+
+    drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+        const ctx = this.ctx;
+        let rot = Math.PI / 2 * 3;
+        let x = cx;
+        let y = cy;
+        const step = Math.PI / spikes;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - outerRadius);
+
+        for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+        }
+
+        ctx.lineTo(cx, cy - outerRadius);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
     }
 
     drawEnemyTelegraph(enemy) {

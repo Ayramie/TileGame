@@ -738,7 +738,7 @@ export class Add {
         this.attackDamage = 2;
 
         // Aggro
-        this.aggroRange = 3; // Only chase player within this range
+        this.aggroRange = 4; // Only chase player within this range
         this.isAggroed = false;
 
         // Stun state
@@ -1019,5 +1019,171 @@ export class Pillar {
             case 'white': return { r: 255, g: 255, b: 255 };
             default: return { r: 255, g: 255, b: 255 };
         }
+    }
+}
+
+// Greater Slime - larger, stronger slime mob
+export class GreaterSlime {
+    constructor(tileX, tileY) {
+        this.tileX = tileX;
+        this.tileY = tileY;
+        this.width = 1;
+        this.height = 1;
+        this.smoothX = tileX;
+        this.smoothY = tileY;
+        this.smoothSpeed = 6;
+        this.health = 120;
+        this.maxHealth = 120;
+        this.isAlive = true;
+        this.hitFlashTimer = 0;
+        this.hitFlashDuration = 0.1;
+
+        // Movement
+        this.moveSpeed = 2.5; // Slower than regular slime
+        this.moveTimer = 0;
+        this.moveCooldown = 0.3;
+
+        // Attack
+        this.attackCooldown = 0;
+        this.attackCooldownMax = 2.5;
+        this.attackDamage = 5;
+
+        // Aggro
+        this.aggroRange = 5;
+        this.isAggroed = false;
+
+        // Stun state
+        this.stunDuration = 0;
+
+        // For respawn tracking
+        this.spawnX = tileX;
+        this.spawnY = tileY;
+    }
+
+    get isStunned() {
+        return this.stunDuration > 0;
+    }
+
+    applyStun(duration) {
+        this.stunDuration = Math.max(this.stunDuration, duration);
+    }
+
+    update(deltaTime, player, gameMap, allAdds = []) {
+        if (!this.isAlive) return;
+
+        if (this.hitFlashTimer > 0) {
+            this.hitFlashTimer -= deltaTime;
+        }
+        if (this.attackCooldown > 0) {
+            this.attackCooldown -= deltaTime;
+        }
+
+        // Update stun
+        if (this.stunDuration > 0) {
+            this.stunDuration -= deltaTime;
+            this.updateSmoothPosition(deltaTime);
+            return;
+        }
+
+        // Check distance to player
+        const dx = player.tileX - this.tileX;
+        const dy = player.tileY - this.tileY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Aggro check
+        if (!this.isAggroed && dist <= this.aggroRange) {
+            this.isAggroed = true;
+        }
+
+        if (!this.isAggroed) {
+            this.updateSmoothPosition(deltaTime);
+            return;
+        }
+
+        // Check if in melee range
+        const meleeRange = Math.max(Math.abs(dx), Math.abs(dy));
+        const smoothDist = Math.sqrt(
+            Math.pow(this.tileX - this.smoothX, 2) +
+            Math.pow(this.tileY - this.smoothY, 2)
+        );
+        const hasArrived = smoothDist < 0.3;
+
+        if (meleeRange <= 1) {
+            if (this.attackCooldown <= 0 && player.isAlive && hasArrived) {
+                player.takeDamage(this.attackDamage);
+                this.attackCooldown = this.attackCooldownMax;
+                this.lastDamageDealt = this.attackDamage;
+            }
+            this.updateSmoothPosition(deltaTime);
+            return;
+        }
+
+        this.updateMovement(deltaTime, player, gameMap, allAdds);
+        this.updateSmoothPosition(deltaTime);
+    }
+
+    updateSmoothPosition(deltaTime) {
+        const dx = this.tileX - this.smoothX;
+        const dy = this.tileY - this.smoothY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0.01) {
+            const move = this.smoothSpeed * deltaTime;
+            if (move >= dist) {
+                this.smoothX = this.tileX;
+                this.smoothY = this.tileY;
+            } else {
+                this.smoothX += (dx / dist) * move;
+                this.smoothY += (dy / dist) * move;
+            }
+        }
+    }
+
+    updateMovement(deltaTime, player, gameMap, allAdds) {
+        this.moveTimer += deltaTime;
+        if (this.moveTimer < this.moveCooldown) return;
+        this.moveTimer = 0;
+
+        const dx = player.tileX - this.tileX;
+        const dy = player.tileY - this.tileY;
+
+        let moveX = 0, moveY = 0;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            moveX = dx > 0 ? 1 : -1;
+        } else if (dy !== 0) {
+            moveY = dy > 0 ? 1 : -1;
+        }
+
+        const newX = this.tileX + moveX;
+        const newY = this.tileY + moveY;
+
+        if (gameMap.isWalkable(newX, newY)) {
+            let blocked = false;
+            for (const other of allAdds) {
+                if (other !== this && other.isAlive && other.tileX === newX && other.tileY === newY) {
+                    blocked = true;
+                    break;
+                }
+            }
+            if (!blocked) {
+                this.tileX = newX;
+                this.tileY = newY;
+            }
+        }
+    }
+
+    takeDamage(amount) {
+        if (!this.isAlive) return;
+        this.health -= amount;
+        this.hitFlashTimer = this.hitFlashDuration;
+        this.isAggroed = true;
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isAlive = false;
+        }
+    }
+
+    occupiesTile(tx, ty) {
+        return tx === this.tileX && ty === this.tileY;
     }
 }

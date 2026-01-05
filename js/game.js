@@ -1,6 +1,6 @@
 import { GameMap, getCanvasSize, tileToScreenCenter, isoToCart, cartToIso, MAP_WIDTH, MAP_HEIGHT } from './map.js';
 import { Player } from './player.js';
-import { Enemy, Add, Pillar } from './enemy.js';
+import { Enemy, Add, Pillar, GreaterSlime } from './enemy.js';
 import { InputHandler } from './input.js';
 import { CombatSystem } from './combat.js';
 import { Renderer } from './renderer.js';
@@ -27,7 +27,8 @@ export class Game {
         this.menuOptions = [
             { id: 'boss', label: 'Slime Boss' },
             { id: 'puzzle', label: 'Pillar Puzzle' },
-            { id: 'mobbing', label: 'Mobbing' }
+            { id: 'mobbing', label: 'Mobbing' },
+            { id: 'guide', label: 'Game Guide' }
         ];
         this.hoveredOption = null;
         this.hoveredEnemy = null; // Track which enemy is being hovered
@@ -105,6 +106,8 @@ export class Game {
         this.player = new Player(5, 5);
         this.enemies = [];
         this.adds = [];
+        this.greaterSlimes = [];
+        this.respawnQueue = []; // For mobbing respawns
         this.combat = new CombatSystem();
         this.laserSystem = new LaserHazardSystem();
         this.groundHazards = new GroundHazardSystem();
@@ -176,7 +179,11 @@ export class Game {
 
         // Handle click
         if (this.input.consumeLeftClick() && this.hoveredOption) {
-            this.initGame(this.hoveredOption);
+            if (this.hoveredOption === 'guide') {
+                this.toggleMenuOverlay(true);
+            } else {
+                this.initGame(this.hoveredOption);
+            }
         }
     }
 
@@ -259,9 +266,8 @@ export class Game {
         this.updateEnemyHover(mouse);
 
         if (this.player.isAlive) {
-            // Left click to move (clears target)
+            // Left click to move (target persists)
             if (this.input.consumeLeftClick()) {
-                this.player.clearTarget();
                 // Pass both enemies and adds for collision detection
                 const allBlockers = [...this.enemies, ...this.adds];
                 this.player.setMoveTarget(mouse.x, mouse.y, this.gameMap, allBlockers);
@@ -321,6 +327,27 @@ export class Game {
                     }
                 }
 
+                // Check if clicking on a greater slime
+                if (!clickedEnemy) {
+                    closestDist = Infinity;
+                    for (const greater of this.greaterSlimes) {
+                        if (!greater.isAlive) continue;
+
+                        const greaterScreen = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
+                        const greaterScreenY = greaterScreen.y - 12; // Greater slime height offset
+
+                        const screenDx = mouse.x - greaterScreen.x;
+                        const screenDy = mouse.y - greaterScreenY;
+                        const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
+
+                        // Larger click radius for greater slime
+                        if (screenDist < 45 && screenDist < closestDist) {
+                            closestDist = screenDist;
+                            clickedEnemy = greater;
+                        }
+                    }
+                }
+
                 // Check if clicking on a pillar (during puzzle phase)
                 if (!clickedEnemy && this.puzzlePhase === 'active') {
                     for (const pillar of this.pillars) {
@@ -349,12 +376,40 @@ export class Game {
                 this.player.clearTarget();
             }
 
-            // Q to toggle cleave buff (next auto-attack will cleave)
+            // Q for cleave - instant if in range of target, otherwise queues for next auto
             if (this.input.wasKeyJustPressed('q')) {
                 if (this.player.cleaveCooldown <= 0) {
-                    this.player.cleaveReady = !this.player.cleaveReady;
-                    if (this.player.cleaveReady) {
-                        this.sound.playBuff();
+                    // Check if we have a target in range
+                    if (this.player.targetEnemy && this.player.targetEnemy.isAlive) {
+                        const enemyCenterX = this.player.targetEnemy.tileX + this.player.targetEnemy.width / 2;
+                        const enemyCenterY = this.player.targetEnemy.tileY + this.player.targetEnemy.height / 2;
+                        const dx = enemyCenterX - this.player.tileX;
+                        const dy = enemyCenterY - this.player.tileY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist <= this.player.autoAttackRange) {
+                            // In range - cleave immediately toward target
+                            const screenPos = tileToScreenCenter(enemyCenterX, enemyCenterY);
+                            this.player.updateFacingDirection(dx, dy, screenPos.x, screenPos.y);
+                            this.player.isCleaving = true;
+                            this.player.cleaveTimer = this.player.cleaveDuration;
+                            this.player.cleaveHitPending = true;
+                            this.player.cleaveCooldown = this.player.cleaveCooldownMax;
+                            this.player.cleaveReady = false;
+                            this.sound.playBuff();
+                        } else {
+                            // Out of range - queue it
+                            this.player.cleaveReady = !this.player.cleaveReady;
+                            if (this.player.cleaveReady) {
+                                this.sound.playBuff();
+                            }
+                        }
+                    } else {
+                        // No target - just toggle
+                        this.player.cleaveReady = !this.player.cleaveReady;
+                        if (this.player.cleaveReady) {
+                            this.sound.playBuff();
+                        }
                     }
                 }
             }
@@ -484,8 +539,9 @@ export class Game {
         }
 
         // Update adds (pass all adds for collision checking)
+        const allMobs = [...this.adds, ...this.greaterSlimes];
         for (const add of this.adds) {
-            add.update(scaledDelta, this.player, this.gameMap, this.adds);
+            add.update(scaledDelta, this.player, this.gameMap, allMobs);
 
             // Check for damage dealt by add (for damage numbers)
             if (add.lastDamageDealt) {
@@ -496,8 +552,25 @@ export class Game {
             }
         }
 
-        // Process combat (include adds and pillars as enemies)
-        const allEnemies = [...this.enemies, ...this.adds];
+        // Update greater slimes
+        for (const greater of this.greaterSlimes) {
+            greater.update(scaledDelta, this.player, this.gameMap, allMobs);
+
+            if (greater.lastDamageDealt) {
+                this.combat.addPlayerDamageNumber(greater.lastDamageDealt);
+                this.screenShake.add(0.25); // Bigger shake for greater slime
+                this.sound.playHurt();
+                greater.lastDamageDealt = null;
+            }
+        }
+
+        // Respawn logic for mobbing mode (15s respawn)
+        if (this.gameMode === 'mobbing') {
+            this.updateRespawns(scaledDelta);
+        }
+
+        // Process combat (include adds, greater slimes, and pillars as enemies)
+        const allEnemies = [...this.enemies, ...this.adds, ...this.greaterSlimes];
         if (this.puzzlePhase === 'active') {
             allEnemies.push(...this.pillars.filter(p => p.isAlive));
         }
@@ -701,6 +774,7 @@ export class Game {
             { type: 'player', obj: this.player, depth: this.player.x + this.player.y },
             ...this.enemies.map(e => ({ type: 'enemy', obj: e, depth: e.tileX + e.tileY + 1 })),
             ...this.adds.map(a => ({ type: 'add', obj: a, depth: a.tileX + a.tileY })),
+            ...this.greaterSlimes.map(g => ({ type: 'greater', obj: g, depth: g.tileX + g.tileY })),
             ...this.pillars.filter(p => p.isAlive).map(p => ({ type: 'pillar', obj: p, depth: p.tileX + p.tileY }))
         ];
 
@@ -719,6 +793,10 @@ export class Game {
                 const isTargeted = this.player.targetEnemy === entity.obj;
                 const isHovered = this.hoveredEnemy === entity.obj;
                 this.renderer.drawAdd(entity.obj, isTargeted, isHovered);
+            } else if (entity.type === 'greater') {
+                const isTargeted = this.player.targetEnemy === entity.obj;
+                const isHovered = this.hoveredEnemy === entity.obj;
+                this.renderer.drawGreaterSlime(entity.obj, isTargeted, isHovered);
             } else if (entity.type === 'pillar') {
                 const isTargeted = this.player.targetEnemy === entity.obj;
                 this.renderer.drawPillar(entity.obj, isTargeted);
@@ -794,7 +872,7 @@ export class Game {
         const minDist = 4; // Minimum distance from player start
         const margin = 3; // Stay away from edges
 
-        // Generate random positions
+        // Generate random positions for regular slimes
         while (spawnPositions.length < 10) {
             const x = margin + Math.floor(Math.random() * (MAP_WIDTH - margin * 2));
             const y = margin + Math.floor(Math.random() * (MAP_HEIGHT - margin * 2));
@@ -824,8 +902,94 @@ export class Game {
 
         for (const pos of spawnPositions) {
             const add = new Add(pos.x, pos.y);
+            add.spawnX = pos.x; // Track spawn position for respawn
+            add.spawnY = pos.y;
             this.adds.push(add);
         }
+
+        // Spawn 2 Greater Slimes
+        const greaterPositions = [];
+        while (greaterPositions.length < 2) {
+            const x = margin + Math.floor(Math.random() * (MAP_WIDTH - margin * 2));
+            const y = margin + Math.floor(Math.random() * (MAP_HEIGHT - margin * 2));
+
+            const dx = x - 5;
+            const dy = y - 5;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist >= minDist + 2) { // Greater slimes spawn further away
+                let tooClose = false;
+                for (const pos of [...spawnPositions, ...greaterPositions]) {
+                    const pdx = x - pos.x;
+                    const pdy = y - pos.y;
+                    if (Math.sqrt(pdx * pdx + pdy * pdy) < 3) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (!tooClose) {
+                    greaterPositions.push({ x, y });
+                }
+            }
+        }
+
+        for (const pos of greaterPositions) {
+            const greater = new GreaterSlime(pos.x, pos.y);
+            this.greaterSlimes.push(greater);
+        }
+    }
+
+    updateRespawns(deltaTime) {
+        // Check for newly dead mobs and add to respawn queue
+        for (const add of this.adds) {
+            if (!add.isAlive && !add.queuedForRespawn) {
+                add.queuedForRespawn = true;
+                this.respawnQueue.push({
+                    type: 'add',
+                    x: add.spawnX,
+                    y: add.spawnY,
+                    timer: 15 // 15 seconds
+                });
+            }
+        }
+
+        for (const greater of this.greaterSlimes) {
+            if (!greater.isAlive && !greater.queuedForRespawn) {
+                greater.queuedForRespawn = true;
+                this.respawnQueue.push({
+                    type: 'greater',
+                    x: greater.spawnX,
+                    y: greater.spawnY,
+                    timer: 15
+                });
+            }
+        }
+
+        // Update respawn timers
+        for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
+            const respawn = this.respawnQueue[i];
+            respawn.timer -= deltaTime;
+
+            if (respawn.timer <= 0) {
+                // Respawn the mob
+                if (respawn.type === 'add') {
+                    const newAdd = new Add(respawn.x, respawn.y);
+                    newAdd.spawnX = respawn.x;
+                    newAdd.spawnY = respawn.y;
+                    this.adds.push(newAdd);
+                } else if (respawn.type === 'greater') {
+                    const newGreater = new GreaterSlime(respawn.x, respawn.y);
+                    this.greaterSlimes.push(newGreater);
+                }
+
+                this.respawnQueue.splice(i, 1);
+            }
+        }
+
+        // Clean up dead mobs from arrays periodically
+        this.adds = this.adds.filter(a => a.isAlive || !a.queuedForRespawn);
+        this.greaterSlimes = this.greaterSlimes.filter(g => g.isAlive || !g.queuedForRespawn);
     }
 
     updateEnemyHover(mouse) {
@@ -867,6 +1031,26 @@ export class Game {
                 if (screenDist < 35 && screenDist < closestDist) {
                     closestDist = screenDist;
                     this.hoveredEnemy = add;
+                }
+            }
+        }
+
+        // Check greater slimes - screen space detection
+        if (!this.hoveredEnemy) {
+            closestDist = Infinity;
+            for (const greater of this.greaterSlimes) {
+                if (!greater.isAlive) continue;
+
+                const greaterScreen = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
+                const greaterScreenY = greaterScreen.y - 12;
+
+                const screenDx = mouse.x - greaterScreen.x;
+                const screenDy = mouse.y - greaterScreenY;
+                const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
+
+                if (screenDist < 45 && screenDist < closestDist) {
+                    closestDist = screenDist;
+                    this.hoveredEnemy = greater;
                 }
             }
         }

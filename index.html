@@ -134,11 +134,11 @@
                     <div class="mob-entry">
                         <div class="mob-header">
                             <span class="mob-name">Slime</span>
-                            <span class="mob-hp">HP: 60</span>
+                            <span class="mob-hp">HP: 200</span>
                         </div>
                         <p class="mob-desc">Basic slime enemies that hop around the arena. They become aggressive when you get too close or when you attack them.</p>
                         <div class="mob-stats">
-                            <span>Damage: 15</span>
+                            <span>Damage: 2</span>
                             <span>Aggro Range: 4 tiles</span>
                         </div>
                         <div class="mob-behavior">
@@ -147,6 +147,27 @@
                                 <li>Idle slimes wander randomly until provoked</li>
                                 <li>Attacking a slime will immediately aggro it</li>
                                 <li>Boss fight slimes have infinite aggro range</li>
+                                <li>Respawns after 15 seconds in Mobbing mode</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mob-entry">
+                        <div class="mob-header">
+                            <span class="mob-name">Greater Slime</span>
+                            <span class="mob-hp">HP: 120</span>
+                        </div>
+                        <p class="mob-desc">A larger, more aggressive purple slime with angry features. Hits harder and has a larger aggro range.</p>
+                        <div class="mob-stats">
+                            <span>Damage: 5</span>
+                            <span>Aggro Range: 5 tiles</span>
+                        </div>
+                        <div class="mob-behavior">
+                            <h4>Behavior:</h4>
+                            <ul>
+                                <li>More aggressive than regular slimes</li>
+                                <li>Slower movement but higher damage</li>
+                                <li>Found in Mobbing mode (2 spawn per wave)</li>
+                                <li>Respawns after 15 seconds</li>
                             </ul>
                         </div>
                     </div>
@@ -182,7 +203,7 @@
         <div id="ability-bar">
             <div class="ability" id="ability-rmb">
                 <span class="key">RMB</span>
-                <span class="name">Auto</span>
+                <span class="name">Target</span>
                 <div class="cooldown-overlay"></div>
             </div>
             <div class="ability" id="ability-q">
