@@ -532,6 +532,35 @@ export class Renderer {
         const ctx = this.ctx;
         const scale = BOSS_SCALE;
 
+        // Draw 2x2 tile highlight under the boss
+        const baseTileX = Math.floor(enemy.smoothX);
+        const baseTileY = Math.floor(enemy.smoothY);
+        const highlightPulse = Math.sin(this.time * 2) * 0.1 + 0.25;
+
+        ctx.save();
+        ctx.fillStyle = `rgba(150, 50, 200, ${highlightPulse})`;
+        ctx.strokeStyle = `rgba(180, 80, 255, ${highlightPulse + 0.2})`;
+        ctx.lineWidth = 2;
+
+        // Draw all 4 tiles of the 2x2 area
+        for (let dx = 0; dx < 2; dx++) {
+            for (let dy = 0; dy < 2; dy++) {
+                const tilePos = tileToScreenCenter(baseTileX + dx + 0.5, baseTileY + dy + 0.5);
+                const halfW = ISO_TILE_WIDTH / 2;
+                const halfH = ISO_TILE_HEIGHT / 2;
+
+                ctx.beginPath();
+                ctx.moveTo(tilePos.x, tilePos.y - halfH);
+                ctx.lineTo(tilePos.x + halfW, tilePos.y);
+                ctx.lineTo(tilePos.x, tilePos.y + halfH);
+                ctx.lineTo(tilePos.x - halfW, tilePos.y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+
         // Boss center position - centered on 2x2 tile area
         const pos = tileToScreenCenter(enemy.smoothX + 1, enemy.smoothY + 1);
         const screenX = pos.x;
