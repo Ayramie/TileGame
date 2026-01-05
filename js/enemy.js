@@ -846,6 +846,26 @@ export class Add {
                 return;
             }
         }
+
+        // No path found - wander randomly
+        const wanderOptions = [
+            { x: 1, y: 0 }, { x: -1, y: 0 },
+            { x: 0, y: 1 }, { x: 0, y: -1 }
+        ];
+        // Shuffle
+        for (let i = wanderOptions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [wanderOptions[i], wanderOptions[j]] = [wanderOptions[j], wanderOptions[i]];
+        }
+        for (const opt of wanderOptions) {
+            const newTileX = this.tileX + opt.x;
+            const newTileY = this.tileY + opt.y;
+            if (!isBlocked(newTileX, newTileY)) {
+                this.tileX = newTileX;
+                this.tileY = newTileY;
+                return;
+            }
+        }
     }
 
     takeDamage(amount) {
