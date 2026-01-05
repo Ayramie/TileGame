@@ -1,6 +1,12 @@
 import { ISO_TILE_WIDTH, ISO_TILE_HEIGHT, TileType, cartToIso, tileToScreenCenter } from './map.js';
 import { PlayerSprite } from './sprites.js';
 
+// Entity scale constants
+const PLAYER_SCALE = 1.4;
+const SLIME_SCALE = 1.3;
+const GREATER_SLIME_SCALE = 1.4;
+const BOSS_SCALE = 1.8;
+
 export class Renderer {
     constructor(canvas, ctx) {
         this.canvas = canvas;
@@ -175,12 +181,12 @@ export class Renderer {
         // Draw player character (moved up by jump height when leaping)
         // Apply squash/stretch scale for juicy movement
         ctx.save();
-        ctx.translate(screenX, screenY - 18 - jumpHeight);
+        ctx.translate(screenX, screenY - 18 * PLAYER_SCALE - jumpHeight);
         // Spin during blade storm
         if (player.bladeStormActive) {
             ctx.rotate(player.bladeStormRotation);
         }
-        ctx.scale(player.scaleX || 1, player.scaleY || 1);
+        ctx.scale((player.scaleX || 1) * PLAYER_SCALE, (player.scaleY || 1) * PLAYER_SCALE);
         this.playerSprite.draw(ctx, 0, 0);
         ctx.restore();
 
@@ -218,10 +224,11 @@ export class Renderer {
         if (!add.isAlive) return;
 
         const ctx = this.ctx;
+        const scale = SLIME_SCALE;
         // Offset by 0.5 to center in tile
         const pos = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
         const screenX = pos.x;
-        const screenY = pos.y - 18; // Raised higher
+        const screenY = pos.y - 18 * scale;
 
         ctx.save();
 
@@ -231,17 +238,16 @@ export class Renderer {
             ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.ellipse(screenX, pos.y - 8, 12, 5, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, pos.y - 8, 12 * scale, 5 * scale, 0, 0, Math.PI * 2);
             ctx.stroke();
         } else if (isHovered) {
-            // Hover highlight (yellow/gold outline)
             const hoverPulse = Math.sin(this.time * 6) * 0.2 + 0.8;
             ctx.strokeStyle = `rgba(255, 220, 100, ${hoverPulse})`;
             ctx.lineWidth = 2;
             ctx.shadowColor = '#ffdd66';
             ctx.shadowBlur = 8;
             ctx.beginPath();
-            ctx.ellipse(screenX, pos.y - 8, 12, 5, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, pos.y - 8, 12 * scale, 5 * scale, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
         }
@@ -249,53 +255,54 @@ export class Renderer {
         // Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(screenX, pos.y - 8, 8, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, pos.y - 8, 8 * scale, 4 * scale, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Body - small slime creature
         const hitFlash = add.hitFlashTimer > 0;
         const bodyColor = hitFlash ? '#ff6666' : '#55aa55';
-        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 10);
+        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 10 * scale);
         gradient.addColorStop(0, hitFlash ? '#ff8888' : '#77cc77');
         gradient.addColorStop(0.7, bodyColor);
         gradient.addColorStop(1, hitFlash ? '#cc4444' : '#338833');
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.ellipse(screenX, screenY, 8, 10, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, screenY, 8 * scale, 10 * scale, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Eyes
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(screenX - 3, screenY - 2, 2, 0, Math.PI * 2);
-        ctx.arc(screenX + 3, screenY - 2, 2, 0, Math.PI * 2);
+        ctx.arc(screenX - 3 * scale, screenY - 2 * scale, 2 * scale, 0, Math.PI * 2);
+        ctx.arc(screenX + 3 * scale, screenY - 2 * scale, 2 * scale, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = '#000000';
         ctx.beginPath();
-        ctx.arc(screenX - 3, screenY - 2, 1, 0, Math.PI * 2);
-        ctx.arc(screenX + 3, screenY - 2, 1, 0, Math.PI * 2);
+        ctx.arc(screenX - 3 * scale, screenY - 2 * scale, 1 * scale, 0, Math.PI * 2);
+        ctx.arc(screenX + 3 * scale, screenY - 2 * scale, 1 * scale, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
 
         // Stun effect - spinning stars
         if (add.isStunned) {
-            this.drawStunEffect(screenX, screenY - 20, 12);
+            this.drawStunEffect(screenX, screenY - 20 * scale, 12 * scale);
         }
 
         // Health bar
-        this.drawHealthBar(screenX - 10, screenY - 18, 20, 3, add.health, add.maxHealth, '#55aa55');
+        this.drawHealthBar(screenX - 12 * scale, screenY - 18 * scale, 24 * scale, 3, add.health, add.maxHealth, '#55aa55');
     }
 
     drawGreaterSlime(greater, isTargeted = false, isHovered = false) {
         if (!greater.isAlive) return;
 
         const ctx = this.ctx;
+        const scale = GREATER_SLIME_SCALE;
         const pos = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
         const screenX = pos.x;
-        const screenY = pos.y - 22; // Raised higher
+        const screenY = pos.y - 22 * scale;
 
         ctx.save();
 
@@ -305,7 +312,7 @@ export class Renderer {
             ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.ellipse(screenX, pos.y - 8, 18, 7, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, pos.y - 8, 18 * scale, 7 * scale, 0, 0, Math.PI * 2);
             ctx.stroke();
         } else if (isHovered) {
             const hoverPulse = Math.sin(this.time * 6) * 0.2 + 0.8;
@@ -314,7 +321,7 @@ export class Renderer {
             ctx.shadowColor = '#ffdd66';
             ctx.shadowBlur = 8;
             ctx.beginPath();
-            ctx.ellipse(screenX, pos.y - 8, 18, 7, 0, 0, Math.PI * 2);
+            ctx.ellipse(screenX, pos.y - 8, 18 * scale, 7 * scale, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
         }
@@ -322,66 +329,66 @@ export class Renderer {
         // Shadow (larger)
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(screenX, pos.y - 8, 14, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, pos.y - 8, 14 * scale, 6 * scale, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Body - bigger purple/magenta slime
         const hitFlash = greater.hitFlashTimer > 0;
         const bodyColor = hitFlash ? '#ff6666' : '#8855aa';
-        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 16);
+        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 16 * scale);
         gradient.addColorStop(0, hitFlash ? '#ff8888' : '#aa77cc');
         gradient.addColorStop(0.7, bodyColor);
         gradient.addColorStop(1, hitFlash ? '#cc4444' : '#553377');
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.ellipse(screenX, screenY, 14, 16, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, screenY, 14 * scale, 16 * scale, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Spikes/bumps on the slime to make it look more menacing
         ctx.fillStyle = hitFlash ? '#cc4444' : '#664488';
         for (let i = 0; i < 4; i++) {
             const angle = (i / 4) * Math.PI * 2 + Math.sin(this.time * 2) * 0.2;
-            const bumpX = screenX + Math.cos(angle) * 10;
-            const bumpY = screenY - 4 + Math.sin(angle) * 6;
+            const bumpX = screenX + Math.cos(angle) * 10 * scale;
+            const bumpY = screenY - 4 * scale + Math.sin(angle) * 6 * scale;
             ctx.beginPath();
-            ctx.arc(bumpX, bumpY, 4, 0, Math.PI * 2);
+            ctx.arc(bumpX, bumpY, 4 * scale, 0, Math.PI * 2);
             ctx.fill();
         }
 
         // Eyes (angrier, larger)
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(screenX - 5, screenY - 3, 3, 0, Math.PI * 2);
-        ctx.arc(screenX + 5, screenY - 3, 3, 0, Math.PI * 2);
+        ctx.arc(screenX - 5 * scale, screenY - 3 * scale, 3 * scale, 0, Math.PI * 2);
+        ctx.arc(screenX + 5 * scale, screenY - 3 * scale, 3 * scale, 0, Math.PI * 2);
         ctx.fill();
 
         // Pupils
         ctx.fillStyle = '#330033';
         ctx.beginPath();
-        ctx.arc(screenX - 5, screenY - 3, 1.5, 0, Math.PI * 2);
-        ctx.arc(screenX + 5, screenY - 3, 1.5, 0, Math.PI * 2);
+        ctx.arc(screenX - 5 * scale, screenY - 3 * scale, 1.5 * scale, 0, Math.PI * 2);
+        ctx.arc(screenX + 5 * scale, screenY - 3 * scale, 1.5 * scale, 0, Math.PI * 2);
         ctx.fill();
 
         // Angry eyebrows
         ctx.strokeStyle = '#330033';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(screenX - 8, screenY - 7);
-        ctx.lineTo(screenX - 3, screenY - 5);
-        ctx.moveTo(screenX + 8, screenY - 7);
-        ctx.lineTo(screenX + 3, screenY - 5);
+        ctx.moveTo(screenX - 8 * scale, screenY - 7 * scale);
+        ctx.lineTo(screenX - 3 * scale, screenY - 5 * scale);
+        ctx.moveTo(screenX + 8 * scale, screenY - 7 * scale);
+        ctx.lineTo(screenX + 3 * scale, screenY - 5 * scale);
         ctx.stroke();
 
         ctx.restore();
 
         // Stun effect
         if (greater.isStunned) {
-            this.drawStunEffect(screenX, screenY - 25, 15);
+            this.drawStunEffect(screenX, screenY - 25 * scale, 15 * scale);
         }
 
         // Health bar (wider)
-        this.drawHealthBar(screenX - 15, screenY - 24, 30, 4, greater.health, greater.maxHealth, '#8855aa');
+        this.drawHealthBar(screenX - 18 * scale, screenY - 24 * scale, 36 * scale, 4, greater.health, greater.maxHealth, '#8855aa');
     }
 
     drawAddTelegraph(add) {
@@ -523,14 +530,15 @@ export class Renderer {
 
     drawElementalBoss(enemy, isTargeted = false, isHovered = false) {
         const ctx = this.ctx;
+        const scale = BOSS_SCALE;
 
-        // Boss center position (use smooth position for interpolation)
-        const pos = tileToScreenCenter(enemy.smoothX + 0.5, enemy.smoothY + 0.5);
+        // Boss center position - centered on 2x2 tile area
+        const pos = tileToScreenCenter(enemy.smoothX + 1, enemy.smoothY + 1);
         const screenX = pos.x;
-        let screenY = pos.y - 20; // Float above ground
+        let screenY = pos.y - 20 * scale; // Float above ground
 
         // Animation values
-        let floatOffset = Math.sin(this.time * 2) * 5;
+        let floatOffset = Math.sin(this.time * 2) * 5 * scale;
         const pulseScale = 1 + Math.sin(this.time * 3) * 0.05;
         const rotationAngle = this.time * 0.5;
 
@@ -538,7 +546,7 @@ export class Renderer {
         const bounceInfo = enemy.getBounceInfo();
         if (bounceInfo) {
             // Arc trajectory - sin curve for jump
-            const jumpHeight = Math.sin(bounceInfo.progress * Math.PI) * 60;
+            const jumpHeight = Math.sin(bounceInfo.progress * Math.PI) * 60 * scale;
             floatOffset -= jumpHeight;
         }
 
@@ -548,12 +556,12 @@ export class Renderer {
 
         ctx.save();
         ctx.translate(screenX, screenY + floatOffset);
-        ctx.scale(pulseScale, pulseScale);
+        ctx.scale(pulseScale * scale, pulseScale * scale);
 
         // Shadow on ground
         ctx.fillStyle = 'rgba(80, 0, 120, 0.4)';
         ctx.beginPath();
-        ctx.ellipse(0, 30 - floatOffset, 30, 12, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 30 - floatOffset / scale, 30, 12, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Target highlight (red circle when targeted)
@@ -562,14 +570,14 @@ export class Renderer {
             ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.ellipse(0, 30 - floatOffset, 35, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 30 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
 
             // Inner red glow
             ctx.strokeStyle = `rgba(255, 100, 100, ${targetPulse * 0.5})`;
             ctx.lineWidth = 6;
             ctx.beginPath();
-            ctx.ellipse(0, 30 - floatOffset, 35, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 30 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
         } else if (isHovered) {
             // Hover highlight (yellow/gold outline)
@@ -579,7 +587,7 @@ export class Renderer {
             ctx.shadowColor = '#ffdd66';
             ctx.shadowBlur = 12;
             ctx.beginPath();
-            ctx.ellipse(0, 30 - floatOffset, 35, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 30 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
         }
