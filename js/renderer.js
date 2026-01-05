@@ -176,6 +176,10 @@ export class Renderer {
         // Apply squash/stretch scale for juicy movement
         ctx.save();
         ctx.translate(screenX, screenY - 18 - jumpHeight);
+        // Spin during blade storm
+        if (player.bladeStormActive) {
+            ctx.rotate(player.bladeStormRotation);
+        }
         ctx.scale(player.scaleX || 1, player.scaleY || 1);
         this.playerSprite.draw(ctx, 0, 0);
         ctx.restore();
