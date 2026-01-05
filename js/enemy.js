@@ -697,8 +697,8 @@ export class Add {
         this.smoothX = tileX;
         this.smoothY = tileY;
         this.smoothSpeed = 4; // Slower for smoother interpolation
-        this.health = 40;
-        this.maxHealth = 40;
+        this.health = 400;
+        this.maxHealth = 400;
         this.isAlive = true;
         this.hitFlashTimer = 0;
         this.hitFlashDuration = 0.1;
