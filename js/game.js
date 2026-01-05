@@ -25,9 +25,15 @@ export class Game {
         // Menu options
         this.menuOptions = [
             { id: 'boss', label: 'Slime Boss' },
-            { id: 'puzzle', label: 'Pillar Puzzle' }
+            { id: 'puzzle', label: 'Pillar Puzzle' },
+            { id: 'mobbing', label: 'Mobbing' }
         ];
         this.hoveredOption = null;
+        this.hoveredEnemy = null; // Track which enemy is being hovered
+
+        // Death state
+        this.deathTimer = 0;
+        this.deathDelay = 3.0; // 3 seconds before returning to menu
 
         this.lastTime = 0;
         this.running = false;
@@ -49,11 +55,20 @@ export class Game {
         this.centerTileX = Math.floor(MAP_WIDTH / 2);
         this.centerTileY = Math.floor(MAP_HEIGHT / 2);
 
+        // Reset death timer
+        this.deathTimer = 0;
+        this.hoveredEnemy = null;
+
         if (mode === 'boss') {
             // Start with boss directly
             this.enemies.push(new Enemy(this.centerTileX - 1, this.centerTileY - 1));
             this.pillars = [];
             this.puzzlePhase = 'complete';
+        } else if (mode === 'mobbing') {
+            // Start with 10 mini slimes spread around the map
+            this.pillars = [];
+            this.puzzlePhase = 'complete';
+            this.spawnMobbingWave();
         } else if (mode === 'puzzle') {
             // Start with puzzle
             this.puzzlePhase = 'waiting';
@@ -137,6 +152,15 @@ export class Game {
         // Update renderer animation time (includes player sprite animation)
         this.renderer.update(deltaTime, this.player);
 
+        // Handle death timer - return to menu after delay
+        if (!this.player.isAlive) {
+            this.deathTimer += deltaTime;
+            if (this.deathTimer >= this.deathDelay) {
+                this.returnToMenu();
+                return;
+            }
+        }
+
         // Handle input (only if player is alive)
         const rawMouse = this.input.getMousePosition();
         const zoom = this.input.getZoom();
@@ -147,6 +171,9 @@ export class Game {
             x: (rawMouse.x - this.canvas.width / 2) / zoom + playerScreen.x,
             y: (rawMouse.y - this.canvas.height / 2) / zoom + playerScreen.y
         };
+
+        // Check for enemy hover
+        this.updateEnemyHover(mouse);
 
         if (this.player.isAlive) {
             // Left click to move (clears target)
@@ -477,10 +504,12 @@ export class Game {
                 this.renderer.drawPlayer(entity.obj, this.player.targetEnemy);
             } else if (entity.type === 'enemy') {
                 const isTargeted = this.player.targetEnemy === entity.obj;
-                this.renderer.drawEnemy(entity.obj, isTargeted);
+                const isHovered = this.hoveredEnemy === entity.obj;
+                this.renderer.drawEnemy(entity.obj, isTargeted, isHovered);
             } else if (entity.type === 'add') {
                 const isTargeted = this.player.targetEnemy === entity.obj;
-                this.renderer.drawAdd(entity.obj, isTargeted);
+                const isHovered = this.hoveredEnemy === entity.obj;
+                this.renderer.drawAdd(entity.obj, isTargeted, isHovered);
             } else if (entity.type === 'pillar') {
                 const isTargeted = this.player.targetEnemy === entity.obj;
                 this.renderer.drawPillar(entity.obj, isTargeted);
@@ -512,7 +541,8 @@ export class Game {
 
         // Death screen overlay (outside zoom transform, fixed on screen)
         if (!this.player.isAlive) {
-            this.renderer.drawDeathScreen();
+            const timeRemaining = Math.max(0, this.deathDelay - this.deathTimer);
+            this.renderer.drawDeathScreen(timeRemaining);
         }
     }
 
@@ -532,6 +562,83 @@ export class Game {
         for (const pos of spawnPositions) {
             const add = new Add(pos.x, pos.y);
             this.adds.push(add);
+        }
+    }
+
+    spawnMobbingWave() {
+        // Spawn 10 mini slimes spread around the map
+        const spawnPositions = [];
+        const minDist = 4; // Minimum distance from player start
+        const margin = 3; // Stay away from edges
+
+        // Generate random positions
+        while (spawnPositions.length < 10) {
+            const x = margin + Math.floor(Math.random() * (MAP_WIDTH - margin * 2));
+            const y = margin + Math.floor(Math.random() * (MAP_HEIGHT - margin * 2));
+
+            // Check distance from player start (5, 5)
+            const dx = x - 5;
+            const dy = y - 5;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist >= minDist) {
+                // Check distance from other spawns
+                let tooClose = false;
+                for (const pos of spawnPositions) {
+                    const pdx = x - pos.x;
+                    const pdy = y - pos.y;
+                    if (Math.sqrt(pdx * pdx + pdy * pdy) < 2) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (!tooClose) {
+                    spawnPositions.push({ x, y });
+                }
+            }
+        }
+
+        for (const pos of spawnPositions) {
+            const add = new Add(pos.x, pos.y);
+            this.adds.push(add);
+        }
+    }
+
+    updateEnemyHover(mouse) {
+        const clickTile = isoToCart(mouse.x, mouse.y);
+        const tileX = Math.floor(clickTile.x);
+        const tileY = Math.floor(clickTile.y);
+
+        this.hoveredEnemy = null;
+
+        // Check boss enemies (2x2)
+        for (const enemy of this.enemies) {
+            if (enemy.isAlive && enemy.occupiesTile(tileX, tileY)) {
+                this.hoveredEnemy = enemy;
+                return;
+            }
+        }
+
+        // Check adds (1x1) - use distance-based detection
+        let closestAdd = null;
+        let closestDist = 1.5;
+
+        for (const add of this.adds) {
+            if (!add.isAlive) continue;
+
+            const dx = clickTile.x - add.smoothX;
+            const dy = clickTile.y - add.smoothY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < closestDist) {
+                closestDist = dist;
+                closestAdd = add;
+            }
+        }
+
+        if (closestAdd) {
+            this.hoveredEnemy = closestAdd;
         }
     }
 }

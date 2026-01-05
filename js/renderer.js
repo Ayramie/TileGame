@@ -200,12 +200,12 @@ export class Renderer {
         }
     }
 
-    drawEnemy(enemy, isTargeted = false) {
+    drawEnemy(enemy, isTargeted = false, isHovered = false) {
         if (!enemy.isAlive) return;
-        this.drawElementalBoss(enemy, isTargeted);
+        this.drawElementalBoss(enemy, isTargeted, isHovered);
     }
 
-    drawAdd(add, isTargeted = false) {
+    drawAdd(add, isTargeted = false, isHovered = false) {
         if (!add.isAlive) return;
 
         const ctx = this.ctx;
@@ -224,6 +224,17 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(screenX, pos.y + 2, 12, 5, 0, 0, Math.PI * 2);
             ctx.stroke();
+        } else if (isHovered) {
+            // Hover highlight (yellow/gold outline)
+            const hoverPulse = Math.sin(this.time * 6) * 0.2 + 0.8;
+            ctx.strokeStyle = `rgba(255, 220, 100, ${hoverPulse})`;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#ffdd66';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.ellipse(screenX, pos.y + 2, 12, 5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
         }
 
         // Shadow
@@ -401,7 +412,7 @@ export class Renderer {
         }
     }
 
-    drawElementalBoss(enemy, isTargeted = false) {
+    drawElementalBoss(enemy, isTargeted = false, isHovered = false) {
         const ctx = this.ctx;
 
         // Boss center position (use smooth position for interpolation)
@@ -451,6 +462,17 @@ export class Renderer {
             ctx.beginPath();
             ctx.ellipse(0, 30 - floatOffset, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
+        } else if (isHovered) {
+            // Hover highlight (yellow/gold outline)
+            const hoverPulse = Math.sin(this.time * 6) * 0.2 + 0.8;
+            ctx.strokeStyle = `rgba(255, 220, 100, ${hoverPulse})`;
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#ffdd66';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.ellipse(0, 30 - floatOffset, 35, 14, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
         }
 
         // Outer glow/aura
@@ -1155,7 +1177,7 @@ export class Renderer {
         }
     }
 
-    drawDeathScreen() {
+    drawDeathScreen(timeRemaining = 0) {
         const ctx = this.ctx;
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
@@ -1192,11 +1214,12 @@ export class Renderer {
 
         ctx.restore();
 
-        // Subtitle
+        // Countdown to menu
         ctx.fillStyle = 'rgba(200, 200, 200, 0.8)';
         ctx.font = '24px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Refresh to try again', centerX, centerY + 60);
+        const seconds = Math.ceil(timeRemaining);
+        ctx.fillText(`Returning to menu in ${seconds}...`, centerX, centerY + 60);
     }
 
     drawLasers(laserSystem) {
