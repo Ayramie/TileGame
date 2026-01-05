@@ -564,7 +564,7 @@ export class Renderer {
         // Boss center position - centered on 2x2 tile area
         const pos = tileToScreenCenter(enemy.smoothX + 1, enemy.smoothY + 1);
         const screenX = pos.x;
-        let screenY = pos.y - 45 * scale; // Float above ground
+        let screenY = pos.y - 30 * scale; // Float above ground
 
         // Animation values
         let floatOffset = Math.sin(this.time * 2) * 5 * scale;
