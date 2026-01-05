@@ -329,7 +329,7 @@ export class ParticleSystem {
     }
 
     // Add dust/debris particles
-    addDust(x, y, count = 5) {
+    addDust(x, y, count = 5, baseSize = 2) {
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * Math.PI * 2;
             const vel = 30 + Math.random() * 50;
@@ -338,7 +338,7 @@ export class ParticleSystem {
                 y: y + (Math.random() - 0.5) * 10,
                 vx: Math.cos(angle) * vel,
                 vy: Math.sin(angle) * vel - 30,
-                size: 2 + Math.random() * 2,
+                size: baseSize + Math.random() * baseSize,
                 color: `rgba(150, 130, 100, ${0.5 + Math.random() * 0.5})`,
                 lifetime: 0.4 + Math.random() * 0.3,
                 maxLifetime: 0.7,

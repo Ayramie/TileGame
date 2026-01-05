@@ -499,7 +499,7 @@ export class Game {
                 if (this.footstepTimer <= 0) {
                     this.footstepTimer = this.footstepInterval;
                     const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
-                    this.particles.addDust(playerScreen.x, playerScreen.y + 5, 2);
+                    this.particles.addDust(playerScreen.x, playerScreen.y - 2, 2, 1);
                 }
             } else {
                 this.footstepTimer = 0;

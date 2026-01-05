@@ -691,6 +691,7 @@ export class Enemy {
 
     takeDamage(amount) {
         if (!this.isAlive) return;
+        if (this.phaseTransitioning) return; // Invulnerable during phase transition
         this.health -= amount;
         this.hitFlashTimer = this.hitFlashDuration;
         if (this.health <= 0) {
