@@ -587,6 +587,9 @@ export class Game {
                 this.screenShake.add(0.5); // Big shake for bounce hit
                 this.hitPause.trigger(0.1);
                 this.sound.playHurt();
+                // Red particles on player hit
+                const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+                this.particles.addBurst(playerScreen.x, playerScreen.y - 15, '#ff4444', 8, 80);
                 enemy.bounceDamageDealt = null;
             }
         }
@@ -612,6 +615,8 @@ export class Game {
                 this.combat.addPlayerDamageNumber(add.lastDamageDealt);
                 this.screenShake.add(0.15); // Small shake for slime hit
                 this.sound.playHurt();
+                const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+                this.particles.addBurst(playerScreen.x, playerScreen.y - 15, '#ff4444', 5, 60);
                 add.lastDamageDealt = null;
             }
         }
@@ -633,6 +638,8 @@ export class Game {
                 this.combat.addPlayerDamageNumber(greater.lastDamageDealt);
                 this.screenShake.add(0.25); // Bigger shake for greater slime
                 this.sound.playHurt();
+                const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+                this.particles.addBurst(playerScreen.x, playerScreen.y - 15, '#ff4444', 6, 70);
                 greater.lastDamageDealt = null;
             }
         }
@@ -699,6 +706,8 @@ export class Game {
                 this.combat.addPlayerDamageNumber(damage);
                 this.screenShake.add(0.4); // Big shake for boss dash hit
                 this.sound.playHurt();
+                const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+                this.particles.addBurst(playerScreen.x, playerScreen.y - 15, '#ff4444', 8, 80);
             });
         }
 
@@ -709,6 +718,8 @@ export class Game {
                 this.combat.addPlayerDamageNumber(damage);
                 this.screenShake.add(0.3);
                 this.sound.playHurt();
+                const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+                this.particles.addBurst(playerScreen.x, playerScreen.y - 15, '#ff4444', 6, 70);
             });
         }
 

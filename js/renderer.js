@@ -188,6 +188,14 @@ export class Renderer {
         }
         ctx.scale((player.scaleX || 1) * PLAYER_SCALE, (player.scaleY || 1) * PLAYER_SCALE);
         this.playerSprite.draw(ctx, 0, 0);
+
+        // Hit flash effect - red/white overlay when damaged
+        if (player.healthFlashTimer > 0) {
+            ctx.globalCompositeOperation = 'source-atop';
+            const flashIntensity = player.healthFlashTimer / 0.15;
+            ctx.fillStyle = `rgba(255, 100, 100, ${flashIntensity * 0.6})`;
+            ctx.fillRect(-20, -35, 40, 50);
+        }
         ctx.restore();
 
         // Leap trail effect while airborne
