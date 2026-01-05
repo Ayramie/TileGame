@@ -175,7 +175,7 @@ export class Renderer {
         const shadowScale = player.isLeaping ? Math.max(0.3, 1 - jumpHeight / 100) : 1;
         ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * shadowScale})`;
         ctx.beginPath();
-        ctx.ellipse(screenX, screenY - 12, 12 * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, screenY - 12, 8 * shadowScale, 4 * shadowScale, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Draw player character (moved up by jump height when leaping)
@@ -590,7 +590,7 @@ export class Renderer {
         // Shadow on ground
         ctx.fillStyle = 'rgba(80, 0, 120, 0.4)';
         ctx.beginPath();
-        ctx.ellipse(0, 45 - floatOffset / scale, 30, 12, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 38 - floatOffset / scale, 30, 12, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Target highlight (red circle when targeted)
@@ -599,14 +599,14 @@ export class Renderer {
             ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.ellipse(0, 45 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 38 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
 
             // Inner red glow
             ctx.strokeStyle = `rgba(255, 100, 100, ${targetPulse * 0.5})`;
             ctx.lineWidth = 6;
             ctx.beginPath();
-            ctx.ellipse(0, 45 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 38 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
         } else if (isHovered) {
             // Hover highlight (yellow/gold outline)
@@ -616,7 +616,7 @@ export class Renderer {
             ctx.shadowColor = '#ffdd66';
             ctx.shadowBlur = 12;
             ctx.beginPath();
-            ctx.ellipse(0, 45 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 38 - floatOffset / scale, 35, 14, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.shadowBlur = 0;
         }
