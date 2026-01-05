@@ -1,4 +1,4 @@
-import { ISO_TILE_WIDTH, ISO_TILE_HEIGHT, TileType, cartToIso, tileToScreenCenter } from './map.js';
+import { ISO_TILE_WIDTH, ISO_TILE_HEIGHT, TileType, cartToIso, tileToScreenCenter, cameraMode, CARDINAL_TILE_SIZE } from './map.js';
 import { PlayerSprite } from './sprites.js';
 
 // Entity scale constants
@@ -85,17 +85,23 @@ export class Renderer {
         ctx.restore();
     }
 
-    // Draw a diamond-shaped isometric tile
+    // Draw a tile (diamond in isometric mode, square in cardinal mode)
     drawIsometricTile(x, y, fillStyle, strokeStyle = null) {
         const ctx = this.ctx;
         const pos = cartToIso(x, y);
 
         ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
-        ctx.lineTo(pos.x + ISO_TILE_WIDTH / 2, pos.y + ISO_TILE_HEIGHT / 2);
-        ctx.lineTo(pos.x, pos.y + ISO_TILE_HEIGHT);
-        ctx.lineTo(pos.x - ISO_TILE_WIDTH / 2, pos.y + ISO_TILE_HEIGHT / 2);
-        ctx.closePath();
+        if (cameraMode === 'cardinal') {
+            // Square tile for cardinal view
+            ctx.rect(pos.x, pos.y, CARDINAL_TILE_SIZE, CARDINAL_TILE_SIZE);
+        } else {
+            // Diamond tile for isometric view
+            ctx.moveTo(pos.x, pos.y);
+            ctx.lineTo(pos.x + ISO_TILE_WIDTH / 2, pos.y + ISO_TILE_HEIGHT / 2);
+            ctx.lineTo(pos.x, pos.y + ISO_TILE_HEIGHT);
+            ctx.lineTo(pos.x - ISO_TILE_WIDTH / 2, pos.y + ISO_TILE_HEIGHT / 2);
+            ctx.closePath();
+        }
 
         ctx.fillStyle = fillStyle;
         ctx.fill();

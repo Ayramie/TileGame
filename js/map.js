@@ -2,6 +2,9 @@
 export const ISO_TILE_WIDTH = 40;
 export const ISO_TILE_HEIGHT = 20;
 
+// Cardinal tile dimensions (square tiles for top-down view)
+export const CARDINAL_TILE_SIZE = 28;
+
 // Legacy tile size for game logic (keep square for simplicity)
 export const TILE_SIZE = 20;
 
@@ -12,13 +15,35 @@ export const MAP_HEIGHT = 30;
 export const ISO_OFFSET_X = MAP_WIDTH * ISO_TILE_WIDTH / 2 + 50;
 export const ISO_OFFSET_Y = 60;
 
+// Cardinal offsets
+export const CARDINAL_OFFSET_X = 80;
+export const CARDINAL_OFFSET_Y = 60;
+
 export const TileType = {
     FLOOR: 0,
     WALL: 1
 };
 
-// Convert cartesian tile coordinates to isometric screen position
+// Camera mode: 'isometric' or 'cardinal'
+export let cameraMode = 'isometric';
+
+export function setCameraMode(mode) {
+    cameraMode = mode;
+}
+
+export function toggleCameraMode() {
+    cameraMode = cameraMode === 'isometric' ? 'cardinal' : 'isometric';
+    return cameraMode;
+}
+
+// Convert cartesian tile coordinates to screen position
 export function cartToIso(tileX, tileY) {
+    if (cameraMode === 'cardinal') {
+        return {
+            x: tileX * CARDINAL_TILE_SIZE + CARDINAL_OFFSET_X,
+            y: tileY * CARDINAL_TILE_SIZE + CARDINAL_OFFSET_Y
+        };
+    }
     return {
         x: (tileX - tileY) * (ISO_TILE_WIDTH / 2) + ISO_OFFSET_X,
         y: (tileX + tileY) * (ISO_TILE_HEIGHT / 2) + ISO_OFFSET_Y
@@ -27,6 +52,12 @@ export function cartToIso(tileX, tileY) {
 
 // Convert screen position to cartesian tile coordinates (returns floats for precise clicking)
 export function isoToCart(screenX, screenY) {
+    if (cameraMode === 'cardinal') {
+        return {
+            x: (screenX - CARDINAL_OFFSET_X) / CARDINAL_TILE_SIZE,
+            y: (screenY - CARDINAL_OFFSET_Y) / CARDINAL_TILE_SIZE
+        };
+    }
     // Adjust for offset
     const x = screenX - ISO_OFFSET_X;
     const y = screenY - ISO_OFFSET_Y;
@@ -43,6 +74,12 @@ export function isoToCart(screenX, screenY) {
 
 // Get the center of a tile in screen coordinates
 export function tileToScreenCenter(tileX, tileY) {
+    if (cameraMode === 'cardinal') {
+        return {
+            x: tileX * CARDINAL_TILE_SIZE + CARDINAL_OFFSET_X + CARDINAL_TILE_SIZE / 2,
+            y: tileY * CARDINAL_TILE_SIZE + CARDINAL_OFFSET_Y + CARDINAL_TILE_SIZE / 2
+        };
+    }
     const iso = cartToIso(tileX, tileY);
     return {
         x: iso.x,

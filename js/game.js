@@ -1,4 +1,4 @@
-import { GameMap, getCanvasSize, tileToScreenCenter, isoToCart, cartToIso, MAP_WIDTH, MAP_HEIGHT } from './map.js';
+import { GameMap, getCanvasSize, tileToScreenCenter, isoToCart, cartToIso, MAP_WIDTH, MAP_HEIGHT, toggleCameraMode, cameraMode } from './map.js';
 import { Player } from './player.js';
 import { Enemy, Add, Pillar, GreaterSlime, Cocoon } from './enemy.js';
 import { InputHandler } from './input.js';
@@ -228,6 +228,11 @@ export class Game {
         // Tab key to toggle game guide overlay
         if (this.input.wasKeyJustPressed('tab')) {
             this.toggleMenuOverlay();
+        }
+
+        // C key to toggle camera mode (isometric/cardinal)
+        if (this.input.wasKeyJustPressed('c')) {
+            toggleCameraMode();
         }
 
         // If menu overlay is open, don't process game input
