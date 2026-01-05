@@ -28,6 +28,7 @@ export class Player {
         this.cleaveTimer = 0;
         this.cleaveDuration = 0.3;
         this.cleaveHitPending = false;
+        this.cleaveReady = false; // Q buffs next auto-attack to cleave
         this.facingAngle = 0;
         // Direction in tile-space for attacks
         this.facingTileDir = { x: 1, y: 0 };
@@ -36,11 +37,27 @@ export class Player {
         this.attackMovementLockout = 0.12; // seconds locked after attacking
         this.cleaveMovementLockout = 0.18; // slightly longer for cleave
 
-        // Shield ability
-        this.shield = 0;
-        this.maxShield = 30;
-        this.shieldCooldown = 0;
-        this.shieldCooldownMax = 30;
+        // Blade Storm ability (W)
+        this.bladeStormActive = false;
+        this.bladeStormDamage = 15;
+        this.bladeStormRadius = 1.5; // tiles around player
+        this.bladeStormTickRate = 0.3; // damage tick interval
+        this.bladeStormTickTimer = 0;
+        this.bladeStormCooldown = 0;
+        this.bladeStormCooldownMax = 6;
+        this.bladeStormRotation = 0; // for visual spinning
+        this.bladeStormLastMoveDir = { x: 1, y: 0 }; // direction when released
+
+        // Spinning disk projectile (released from blade storm)
+        this.spinningDisk = null; // { x, y, dirX, dirY, speed, damage, lifetime }
+        this.spinningDiskDamage = 25;
+        this.spinningDiskSpeed = 12; // tiles per second
+        this.spinningDiskLifetime = 1.5; // seconds
+
+        // Health Potion (1 key)
+        this.healthPotionCooldown = 0;
+        this.healthPotionCooldownMax = 10;
+        this.healthPotionHeal = 30;
 
         // Pathfinding
         this.path = [];
@@ -391,8 +408,29 @@ export class Player {
         if (this.movementLockout > 0) {
             this.movementLockout -= deltaTime;
         }
-        if (this.shieldCooldown > 0) {
-            this.shieldCooldown -= deltaTime;
+        if (this.bladeStormCooldown > 0) {
+            this.bladeStormCooldown -= deltaTime;
+        }
+        if (this.healthPotionCooldown > 0) {
+            this.healthPotionCooldown -= deltaTime;
+        }
+
+        // Update blade storm rotation visual
+        if (this.bladeStormActive) {
+            this.bladeStormRotation += deltaTime * 15; // Fast spin
+            this.bladeStormTickTimer -= deltaTime;
+        }
+
+        // Update spinning disk projectile
+        if (this.spinningDisk) {
+            this.spinningDisk.x += this.spinningDisk.dirX * this.spinningDisk.speed * deltaTime;
+            this.spinningDisk.y += this.spinningDisk.dirY * this.spinningDisk.speed * deltaTime;
+            this.spinningDisk.lifetime -= deltaTime;
+            this.spinningDisk.rotation += deltaTime * 20;
+
+            if (this.spinningDisk.lifetime <= 0) {
+                this.spinningDisk = null;
+            }
         }
         if (this.pathfindCooldown > 0) {
             this.pathfindCooldown -= deltaTime;
@@ -526,6 +564,15 @@ export class Player {
                         y: enemyCenterY,
                         damage: this.attackDamage
                     };
+
+                    // If cleave is ready, also do cleave damage
+                    if (this.cleaveReady) {
+                        this.cleaveReady = false;
+                        this.isCleaving = true;
+                        this.cleaveTimer = this.cleaveDuration;
+                        this.cleaveHitPending = true;
+                        this.cleaveCooldown = this.cleaveCooldownMax;
+                    }
 
                     // Visual attack animation
                     this.isAttacking = true;
@@ -720,10 +767,79 @@ export class Player {
         return tiles;
     }
 
-    activateShield() {
-        if (this.shieldCooldown > 0) return false;
-        this.shield = this.maxShield;
-        this.shieldCooldown = this.shieldCooldownMax;
+    // ========== BLADE STORM ABILITY ==========
+
+    startBladeStorm() {
+        if (this.bladeStormCooldown > 0 || this.bladeStormActive) return false;
+        this.bladeStormActive = true;
+        this.bladeStormTickTimer = 0; // Damage immediately
+        this.bladeStormRotation = 0;
+        return true;
+    }
+
+    updateBladeStorm(deltaTime, moveDir) {
+        if (!this.bladeStormActive) return;
+
+        // Track last movement direction for disk release
+        if (moveDir && (moveDir.x !== 0 || moveDir.y !== 0)) {
+            const len = Math.sqrt(moveDir.x * moveDir.x + moveDir.y * moveDir.y);
+            this.bladeStormLastMoveDir = {
+                x: moveDir.x / len,
+                y: moveDir.y / len
+            };
+        }
+    }
+
+    releaseBladeStorm() {
+        if (!this.bladeStormActive) return false;
+
+        this.bladeStormActive = false;
+        this.bladeStormCooldown = this.bladeStormCooldownMax;
+
+        // Shoot spinning disk in last move direction
+        this.spinningDisk = {
+            x: this.tileX,
+            y: this.tileY,
+            dirX: this.bladeStormLastMoveDir.x,
+            dirY: this.bladeStormLastMoveDir.y,
+            speed: this.spinningDiskSpeed,
+            damage: this.spinningDiskDamage,
+            lifetime: this.spinningDiskLifetime,
+            rotation: 0,
+            hitEnemies: new Set() // Track enemies already hit
+        };
+
+        return true;
+    }
+
+    getBladeStormTiles() {
+        // Get tiles within blade storm radius
+        const tiles = [];
+        const radius = Math.ceil(this.bladeStormRadius);
+
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist <= this.bladeStormRadius && (dx !== 0 || dy !== 0)) {
+                    tiles.push({
+                        x: this.tileX + dx,
+                        y: this.tileY + dy
+                    });
+                }
+            }
+        }
+
+        return tiles;
+    }
+
+    // ========== HEALTH POTION ==========
+
+    useHealthPotion() {
+        if (this.healthPotionCooldown > 0) return false;
+        if (this.health >= this.maxHealth) return false; // Don't waste if full
+
+        this.health = Math.min(this.maxHealth, this.health + this.healthPotionHeal);
+        this.healthPotionCooldown = this.healthPotionCooldownMax;
         return true;
     }
 
@@ -1116,17 +1232,6 @@ export class Player {
 
     takeDamage(amount) {
         if (!this.isAlive) return;
-
-        // Shield absorbs damage first
-        if (this.shield > 0) {
-            if (this.shield >= amount) {
-                this.shield -= amount;
-                return;
-            } else {
-                amount -= this.shield;
-                this.shield = 0;
-            }
-        }
 
         this.health -= amount;
         if (this.health <= 0) {

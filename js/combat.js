@@ -125,6 +125,55 @@ export class CombatSystem {
         }
     }
 
+    processBladeStorm(player, enemies) {
+        if (!player.bladeStormActive) return;
+
+        // Check if it's time for a damage tick
+        if (player.bladeStormTickTimer > 0) return;
+
+        player.bladeStormTickTimer = player.bladeStormTickRate;
+
+        const tiles = player.getBladeStormTiles();
+        const damage = player.bladeStormDamage;
+
+        for (const enemy of enemies) {
+            if (!enemy.isAlive) continue;
+
+            for (const tile of tiles) {
+                if (enemy.occupiesTile(tile.x, tile.y)) {
+                    enemy.takeDamage(damage);
+                    const screenPos = tileToScreenCenter(enemy.tileX + 0.5, enemy.tileY + 0.5);
+                    this.addDamageNumber(screenPos.x, screenPos.y - 30, damage);
+                    break; // Only damage each enemy once per tick
+                }
+            }
+        }
+    }
+
+    processSpinningDisk(player, enemies) {
+        const disk = player.spinningDisk;
+        if (!disk) return;
+
+        const damage = disk.damage;
+
+        for (const enemy of enemies) {
+            if (!enemy.isAlive) continue;
+            if (disk.hitEnemies.has(enemy)) continue; // Already hit this enemy
+
+            // Check if disk is near enemy (within 1 tile)
+            const dx = disk.x - (enemy.tileX + enemy.width / 2);
+            const dy = disk.y - (enemy.tileY + enemy.height / 2);
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 1.5) {
+                disk.hitEnemies.add(enemy);
+                enemy.takeDamage(damage);
+                const screenPos = tileToScreenCenter(enemy.tileX + 0.5, enemy.tileY + 0.5);
+                this.addDamageNumber(screenPos.x, screenPos.y - 30, damage);
+            }
+        }
+    }
+
     processEnemyAttacks(enemies, player) {
         for (const enemy of enemies) {
             if (!enemy.isAlive || !enemy.attackHitPending) continue;

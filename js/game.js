@@ -243,20 +243,32 @@ export class Game {
                 }
             }
 
-            // Q for cleave (hold to aim, release to fire)
+            // Q to toggle cleave buff (next auto-attack will cleave)
             if (this.input.wasKeyJustPressed('q')) {
-                this.player.startCleaveAim(mouse.x, mouse.y);
-            }
-            if (this.input.isKeyPressed('q') && this.player.cleaveAiming) {
-                this.player.updateCleaveAim(mouse.x, mouse.y);
-            }
-            if (this.input.wasKeyJustReleased('q') && this.player.cleaveAiming) {
-                this.player.releaseCleave();
+                if (this.player.cleaveCooldown <= 0) {
+                    this.player.cleaveReady = !this.player.cleaveReady;
+                }
             }
 
-            // W for shield
+            // W for blade storm (hold to spin, release to shoot disk)
             if (this.input.wasKeyJustPressed('w')) {
-                this.player.activateShield();
+                this.player.startBladeStorm();
+            }
+            if (this.input.isKeyPressed('w') && this.player.bladeStormActive) {
+                // Track movement direction while blade storming
+                const moveDir = {
+                    x: this.player.targetTileX - this.player.tileX,
+                    y: this.player.targetTileY - this.player.tileY
+                };
+                this.player.updateBladeStorm(deltaTime, moveDir);
+            }
+            if (this.input.wasKeyJustReleased('w') && this.player.bladeStormActive) {
+                this.player.releaseBladeStorm();
+            }
+
+            // 1 for health potion
+            if (this.input.wasKeyJustPressed('1')) {
+                this.player.useHealthPotion();
             }
 
             // E for earthquake (hold to charge, release to fire)
@@ -334,6 +346,8 @@ export class Game {
         this.combat.processShockwave(this.player, allEnemies);
         this.combat.processLeapSlam(this.player, allEnemies);
         this.combat.processEarthquake(this.player, allEnemies);
+        this.combat.processBladeStorm(this.player, allEnemies);
+        this.combat.processSpinningDisk(this.player, allEnemies);
         this.combat.processEnemyAttacks(this.enemies, this.player);
         this.combat.update(deltaTime);
 
@@ -525,6 +539,12 @@ export class Game {
 
         // Draw earthquake telegraph (while charging and exploding)
         this.renderer.drawEarthquakeTelegraph(this.player);
+
+        // Draw blade storm effect
+        this.renderer.drawBladeStorm(this.player);
+
+        // Draw spinning disk projectile
+        this.renderer.drawSpinningDisk(this.player);
 
         // Draw cleave aim telegraph (while aiming)
         this.renderer.drawCleaveAimTelegraph(this.player);

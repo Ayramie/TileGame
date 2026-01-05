@@ -845,6 +845,125 @@ export class Renderer {
         }
     }
 
+    drawBladeStorm(player) {
+        if (!player.bladeStormActive) return;
+
+        const ctx = this.ctx;
+        const pos = tileToScreenCenter(player.x, player.y);
+
+        // Draw spinning blades around player
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+
+        const numBlades = 4;
+        const bladeLength = 35;
+
+        for (let i = 0; i < numBlades; i++) {
+            const angle = player.bladeStormRotation + (i * Math.PI * 2 / numBlades);
+
+            ctx.save();
+            ctx.rotate(angle);
+
+            // Blade shape
+            ctx.beginPath();
+            ctx.moveTo(15, 0);
+            ctx.lineTo(bladeLength, -4);
+            ctx.lineTo(bladeLength + 5, 0);
+            ctx.lineTo(bladeLength, 4);
+            ctx.closePath();
+
+            // Blade gradient
+            const gradient = ctx.createLinearGradient(15, 0, bladeLength, 0);
+            gradient.addColorStop(0, 'rgba(200, 200, 220, 0.9)');
+            gradient.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+            gradient.addColorStop(1, 'rgba(180, 180, 200, 0.7)');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(100, 100, 150, 0.8)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Draw center glow
+        const glowGradient = ctx.createRadialGradient(0, 0, 5, 0, 0, 25);
+        glowGradient.addColorStop(0, 'rgba(200, 220, 255, 0.5)');
+        glowGradient.addColorStop(1, 'rgba(200, 220, 255, 0)');
+        ctx.fillStyle = glowGradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, 25, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // Draw affected tiles
+        const tiles = player.getBladeStormTiles();
+        const pulse = Math.sin(this.time * 8) * 0.2 + 0.6;
+
+        for (const tile of tiles) {
+            const fillColor = `rgba(200, 220, 255, ${pulse * 0.3})`;
+            const strokeColor = `rgba(220, 240, 255, ${pulse * 0.6})`;
+            this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+        }
+    }
+
+    drawSpinningDisk(player) {
+        const disk = player.spinningDisk;
+        if (!disk) return;
+
+        const ctx = this.ctx;
+        const pos = tileToScreenCenter(disk.x, disk.y);
+
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.rotate(disk.rotation);
+
+        // Outer disk
+        ctx.beginPath();
+        ctx.arc(0, 0, 18, 0, Math.PI * 2);
+        const gradient = ctx.createRadialGradient(0, 0, 5, 0, 0, 18);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        gradient.addColorStop(0.5, 'rgba(200, 220, 255, 0.9)');
+        gradient.addColorStop(1, 'rgba(150, 180, 220, 0.7)');
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Edge blades
+        for (let i = 0; i < 6; i++) {
+            const angle = i * Math.PI / 3;
+            ctx.save();
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(16, 0);
+            ctx.lineTo(25, -3);
+            ctx.lineTo(25, 3);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(180, 200, 230, 0.9)';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Center
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        ctx.restore();
+
+        // Trail effect
+        const trailPos = tileToScreenCenter(
+            disk.x - disk.dirX * 0.5,
+            disk.y - disk.dirY * 0.5
+        );
+        ctx.beginPath();
+        ctx.arc(trailPos.x, trailPos.y, 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(200, 220, 255, 0.3)';
+        ctx.fill();
+    }
+
     drawCleaveAimTelegraph(player) {
         if (!player.cleaveAiming) return;
 
@@ -1086,24 +1205,36 @@ export class Renderer {
             const overlay = abilityQ.querySelector('.cooldown-overlay');
             if (player.cleaveCooldown > 0) {
                 abilityQ.classList.add('on-cooldown');
+                abilityQ.classList.remove('active');
                 const percent = (player.cleaveCooldown / player.cleaveCooldownMax) * 100;
                 overlay.style.height = `${percent}%`;
+            } else if (player.cleaveReady) {
+                abilityQ.classList.add('active');
+                abilityQ.classList.remove('on-cooldown');
+                overlay.style.height = '0%';
             } else {
                 abilityQ.classList.remove('on-cooldown');
+                abilityQ.classList.remove('active');
                 overlay.style.height = '0%';
             }
         }
 
-        // Shield cooldown
+        // Blade Storm cooldown
         const abilityW = document.getElementById('ability-w');
         if (abilityW) {
             const overlay = abilityW.querySelector('.cooldown-overlay');
-            if (player.shieldCooldown > 0) {
+            if (player.bladeStormCooldown > 0) {
                 abilityW.classList.add('on-cooldown');
-                const percent = (player.shieldCooldown / player.shieldCooldownMax) * 100;
+                abilityW.classList.remove('active');
+                const percent = (player.bladeStormCooldown / player.bladeStormCooldownMax) * 100;
                 overlay.style.height = `${percent}%`;
+            } else if (player.bladeStormActive) {
+                abilityW.classList.add('active');
+                abilityW.classList.remove('on-cooldown');
+                overlay.style.height = '0%';
             } else {
                 abilityW.classList.remove('on-cooldown');
+                abilityW.classList.remove('active');
                 overlay.style.height = '0%';
             }
         }
@@ -1149,6 +1280,20 @@ export class Renderer {
             } else {
                 abilityR.classList.remove('on-cooldown');
                 abilityR.classList.remove('charging');
+                overlay.style.height = '0%';
+            }
+        }
+
+        // Health potion cooldown
+        const ability1 = document.getElementById('ability-1');
+        if (ability1) {
+            const overlay = ability1.querySelector('.cooldown-overlay');
+            if (player.healthPotionCooldown > 0) {
+                ability1.classList.add('on-cooldown');
+                const percent = (player.healthPotionCooldown / player.healthPotionCooldownMax) * 100;
+                overlay.style.height = `${percent}%`;
+            } else {
+                ability1.classList.remove('on-cooldown');
                 overlay.style.height = '0%';
             }
         }
