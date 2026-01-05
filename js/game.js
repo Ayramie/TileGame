@@ -113,6 +113,7 @@ export class Game {
         this.groundHazards = new GroundHazardSystem();
         this.portalDashSystem = new PortalDashSystem();
         this.cocoons = [];
+        this.scenery = []; // Decorative elements (trees, rocks, etc.)
 
         // Center tile position
         this.centerTileX = Math.floor(MAP_WIDTH / 2);
@@ -131,6 +132,7 @@ export class Game {
             // Start with 10 mini slimes spread around the map
             this.pillars = [];
             this.puzzlePhase = 'complete';
+            this.generateScenery();
             this.spawnMobbingWave();
         } else if (mode === 'puzzle') {
             // Start with puzzle
@@ -792,7 +794,8 @@ export class Game {
             ...this.adds.map(a => ({ type: 'add', obj: a, depth: a.tileX + a.tileY })),
             ...this.greaterSlimes.map(g => ({ type: 'greater', obj: g, depth: g.tileX + g.tileY })),
             ...this.cocoons.filter(c => c.isAlive).map(c => ({ type: 'cocoon', obj: c, depth: c.tileX + c.tileY })),
-            ...this.pillars.filter(p => p.isAlive).map(p => ({ type: 'pillar', obj: p, depth: p.tileX + p.tileY }))
+            ...this.pillars.filter(p => p.isAlive).map(p => ({ type: 'pillar', obj: p, depth: p.tileX + p.tileY })),
+            ...this.scenery.map(s => ({ type: 'scenery', obj: s, depth: s.x + s.y - 0.5 }))
         ];
 
         // Sort by depth (back to front)
@@ -820,6 +823,8 @@ export class Game {
             } else if (entity.type === 'cocoon') {
                 const isTargeted = this.player.targetEnemy === entity.obj;
                 this.renderer.drawCocoon(entity.obj, isTargeted);
+            } else if (entity.type === 'scenery') {
+                this.renderer.drawScenery(entity.obj);
             }
         }
 
@@ -985,6 +990,68 @@ export class Game {
             const greater = new GreaterSlime(pos.x, pos.y);
             this.greaterSlimes.push(greater);
         }
+    }
+
+    generateScenery() {
+        this.scenery = [];
+        const margin = 2;
+        const playerStart = { x: 5, y: 5 };
+        const minPlayerDist = 3;
+
+        // Scenery types with spawn weights
+        const sceneryTypes = [
+            { type: 'tree', weight: 3, blocking: true },
+            { type: 'rock', weight: 4, blocking: true },
+            { type: 'bush', weight: 5, blocking: false },
+            { type: 'grass', weight: 8, blocking: false },
+            { type: 'flowers', weight: 4, blocking: false }
+        ];
+
+        const totalWeight = sceneryTypes.reduce((sum, s) => sum + s.weight, 0);
+
+        // Generate ~40-60 scenery pieces
+        const numScenery = 40 + Math.floor(Math.random() * 20);
+        const usedTiles = new Set();
+
+        for (let i = 0; i < numScenery; i++) {
+            // Random position
+            const x = margin + Math.floor(Math.random() * (MAP_WIDTH - margin * 2));
+            const y = margin + Math.floor(Math.random() * (MAP_HEIGHT - margin * 2));
+            const key = `${x},${y}`;
+
+            // Skip if tile already used
+            if (usedTiles.has(key)) continue;
+
+            // Skip if too close to player start
+            const dx = x - playerStart.x;
+            const dy = y - playerStart.y;
+            if (Math.sqrt(dx * dx + dy * dy) < minPlayerDist) continue;
+
+            // Pick random scenery type based on weight
+            let roll = Math.random() * totalWeight;
+            let selectedType = sceneryTypes[0];
+            for (const st of sceneryTypes) {
+                roll -= st.weight;
+                if (roll <= 0) {
+                    selectedType = st;
+                    break;
+                }
+            }
+
+            usedTiles.add(key);
+            this.scenery.push({
+                x: x,
+                y: y,
+                type: selectedType.type,
+                blocking: selectedType.blocking,
+                variant: Math.floor(Math.random() * 3), // Visual variation
+                scale: 0.8 + Math.random() * 0.4 // Size variation
+            });
+        }
+    }
+
+    isSceneryBlocking(tileX, tileY) {
+        return this.scenery.some(s => s.blocking && s.x === tileX && s.y === tileY);
     }
 
     updateRespawns(deltaTime) {

@@ -1771,6 +1771,217 @@ export class Renderer {
         this.drawHealthBar(screenX - 12, screenY - 22, 24, 3, cocoon.health, cocoon.maxHealth, '#9966aa');
     }
 
+    drawScenery(scenery) {
+        const ctx = this.ctx;
+        const pos = tileToScreenCenter(scenery.x + 0.5, scenery.y + 0.5);
+        const scale = scenery.scale;
+
+        ctx.save();
+
+        switch (scenery.type) {
+            case 'tree':
+                this.drawTree(pos.x, pos.y, scale, scenery.variant);
+                break;
+            case 'rock':
+                this.drawRock(pos.x, pos.y, scale, scenery.variant);
+                break;
+            case 'bush':
+                this.drawBush(pos.x, pos.y, scale, scenery.variant);
+                break;
+            case 'grass':
+                this.drawGrass(pos.x, pos.y, scale, scenery.variant);
+                break;
+            case 'flowers':
+                this.drawFlowers(pos.x, pos.y, scale, scenery.variant);
+                break;
+        }
+
+        ctx.restore();
+    }
+
+    drawTree(x, y, scale, variant) {
+        const ctx = this.ctx;
+        const baseY = y - 5;
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.beginPath();
+        ctx.ellipse(x, y + 2, 12 * scale, 6 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Trunk
+        const trunkColor = variant === 0 ? '#5c4033' : variant === 1 ? '#6b4423' : '#4a3728';
+        ctx.fillStyle = trunkColor;
+        ctx.fillRect(x - 3 * scale, baseY - 20 * scale, 6 * scale, 25 * scale);
+
+        // Foliage (layered circles)
+        const leafColors = [
+            ['#228b22', '#2e8b2e', '#1e7b1e'], // Forest green
+            ['#32cd32', '#3cb371', '#2e8b57'], // Lime green
+            ['#006400', '#228b22', '#2e8b57']  // Dark green
+        ][variant];
+
+        // Bottom layer
+        ctx.fillStyle = leafColors[2];
+        ctx.beginPath();
+        ctx.ellipse(x, baseY - 25 * scale, 14 * scale, 10 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Middle layer
+        ctx.fillStyle = leafColors[1];
+        ctx.beginPath();
+        ctx.ellipse(x, baseY - 32 * scale, 12 * scale, 9 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Top layer
+        ctx.fillStyle = leafColors[0];
+        ctx.beginPath();
+        ctx.ellipse(x, baseY - 38 * scale, 8 * scale, 7 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    drawRock(x, y, scale, variant) {
+        const ctx = this.ctx;
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(x, y + 2, 10 * scale, 5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rock colors
+        const colors = [
+            ['#808080', '#696969', '#555555'], // Gray
+            ['#8b7355', '#6b5344', '#5b4334'], // Brown rock
+            ['#708090', '#5a6a7a', '#4a5a6a']  // Slate
+        ][variant];
+
+        // Main rock shape (irregular polygon)
+        ctx.fillStyle = colors[0];
+        ctx.beginPath();
+        ctx.moveTo(x - 8 * scale, y - 2 * scale);
+        ctx.lineTo(x - 6 * scale, y - 10 * scale);
+        ctx.lineTo(x + 2 * scale, y - 12 * scale);
+        ctx.lineTo(x + 8 * scale, y - 8 * scale);
+        ctx.lineTo(x + 7 * scale, y);
+        ctx.lineTo(x - 5 * scale, y + 2 * scale);
+        ctx.closePath();
+        ctx.fill();
+
+        // Darker side
+        ctx.fillStyle = colors[1];
+        ctx.beginPath();
+        ctx.moveTo(x + 2 * scale, y - 12 * scale);
+        ctx.lineTo(x + 8 * scale, y - 8 * scale);
+        ctx.lineTo(x + 7 * scale, y);
+        ctx.lineTo(x + 1 * scale, y - 4 * scale);
+        ctx.closePath();
+        ctx.fill();
+
+        // Highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.beginPath();
+        ctx.ellipse(x - 3 * scale, y - 8 * scale, 3 * scale, 2 * scale, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    drawBush(x, y, scale, variant) {
+        const ctx = this.ctx;
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.beginPath();
+        ctx.ellipse(x, y + 1, 10 * scale, 5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bush colors
+        const colors = [
+            ['#3cb371', '#2e8b57'], // Medium sea green
+            ['#228b22', '#1e7b1e'], // Forest green
+            ['#6b8e23', '#556b2f']  // Olive
+        ][variant];
+
+        // Bush body (overlapping circles)
+        ctx.fillStyle = colors[1];
+        ctx.beginPath();
+        ctx.ellipse(x - 4 * scale, y - 4 * scale, 6 * scale, 5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.ellipse(x + 4 * scale, y - 3 * scale, 6 * scale, 5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = colors[0];
+        ctx.beginPath();
+        ctx.ellipse(x, y - 6 * scale, 7 * scale, 5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    drawGrass(x, y, scale, variant) {
+        const ctx = this.ctx;
+
+        // Grass colors
+        const colors = ['#4a7c3f', '#3d6b35', '#5a8c4f'][variant];
+
+        ctx.strokeStyle = colors;
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = 'round';
+
+        // Draw several grass blades
+        const bladeCount = 5 + variant;
+        for (let i = 0; i < bladeCount; i++) {
+            const offsetX = (i - bladeCount / 2) * 3 * scale;
+            const height = (8 + Math.random() * 4) * scale;
+            const curve = (Math.random() - 0.5) * 6 * scale;
+
+            ctx.beginPath();
+            ctx.moveTo(x + offsetX, y);
+            ctx.quadraticCurveTo(x + offsetX + curve, y - height / 2, x + offsetX + curve * 0.5, y - height);
+            ctx.stroke();
+        }
+    }
+
+    drawFlowers(x, y, scale, variant) {
+        const ctx = this.ctx;
+
+        // Draw grass base first
+        this.drawGrass(x, y, scale * 0.7, variant);
+
+        // Flower colors
+        const flowerColors = [
+            ['#ff69b4', '#ffff00'], // Pink with yellow center
+            ['#ffd700', '#ff8c00'], // Yellow with orange center
+            ['#9370db', '#ffffff']  // Purple with white center
+        ][variant];
+
+        // Draw 2-3 small flowers
+        const flowerCount = 2 + (variant % 2);
+        for (let i = 0; i < flowerCount; i++) {
+            const fx = x + (i - 1) * 6 * scale;
+            const fy = y - 8 * scale - i * 2 * scale;
+
+            // Petals
+            ctx.fillStyle = flowerColors[0];
+            for (let p = 0; p < 5; p++) {
+                const angle = (p / 5) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.ellipse(
+                    fx + Math.cos(angle) * 2 * scale,
+                    fy + Math.sin(angle) * 2 * scale,
+                    2 * scale, 1.5 * scale,
+                    angle, 0, Math.PI * 2
+                );
+                ctx.fill();
+            }
+
+            // Center
+            ctx.fillStyle = flowerColors[1];
+            ctx.beginPath();
+            ctx.arc(fx, fy, 1.5 * scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
     drawPortalDash(portalDashSystem) {
         if (!portalDashSystem.isActive()) return;
 
