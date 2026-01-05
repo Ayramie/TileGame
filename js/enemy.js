@@ -696,7 +696,7 @@ export class Add {
         this.height = 1;
         this.smoothX = tileX;
         this.smoothY = tileY;
-        this.smoothSpeed = 4; // Slower for smoother interpolation
+        this.smoothSpeed = 8; // Fast to match tile position
         this.health = 400;
         this.maxHealth = 400;
         this.isAlive = true;
@@ -746,9 +746,16 @@ export class Add {
 
         // Check if in melee range to attack (adjacent tile, including diagonals)
         const meleeRange = Math.max(Math.abs(dx), Math.abs(dy));
+        // Also check that we've visually arrived at our tile
+        const smoothDist = Math.sqrt(
+            Math.pow(this.tileX - this.smoothX, 2) +
+            Math.pow(this.tileY - this.smoothY, 2)
+        );
+        const hasArrived = smoothDist < 0.3;
+
         if (meleeRange <= 1) {
-            // In range - attack if off cooldown, but don't move
-            if (this.attackCooldown <= 0 && player.isAlive) {
+            // In range - attack if off cooldown and visually arrived
+            if (this.attackCooldown <= 0 && player.isAlive && hasArrived) {
                 player.takeDamage(this.attackDamage);
                 this.attackCooldown = this.attackCooldownMax;
                 this.lastDamageDealt = this.attackDamage;
