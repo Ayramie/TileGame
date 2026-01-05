@@ -5,6 +5,7 @@ import { InputHandler } from './input.js';
 import { CombatSystem } from './combat.js';
 import { Renderer } from './renderer.js';
 import { LaserHazardSystem, GroundHazardSystem } from './hazards.js';
+import { ScreenShake, HitPause, ParticleSystem, SmoothCamera, InputBuffer, SoundSystem } from './effects.js';
 
 export class Game {
     constructor(canvas) {
@@ -34,6 +35,14 @@ export class Game {
         // Death state
         this.deathTimer = 0;
         this.deathDelay = 3.0; // 3 seconds before returning to menu
+
+        // Game feel effects (persistent across games)
+        this.screenShake = new ScreenShake();
+        this.hitPause = new HitPause();
+        this.particles = new ParticleSystem();
+        this.camera = new SmoothCamera();
+        this.inputBuffer = new InputBuffer();
+        this.sound = new SoundSystem();
 
         this.lastTime = 0;
         this.running = false;
@@ -149,8 +158,18 @@ export class Game {
             return;
         }
 
+        // Update game feel effects (always update, not affected by hit pause)
+        this.hitPause.update(deltaTime);
+        this.screenShake.update(deltaTime);
+        this.particles.update(deltaTime);
+        this.inputBuffer.update(deltaTime);
+
+        // Apply hit pause time scaling
+        const timeScale = this.hitPause.getTimeScale();
+        const scaledDelta = deltaTime * timeScale;
+
         // Update renderer animation time (includes player sprite animation)
-        this.renderer.update(deltaTime, this.player);
+        this.renderer.update(scaledDelta, this.player);
 
         // Handle death timer - return to menu after delay
         if (!this.player.isAlive) {
@@ -161,15 +180,20 @@ export class Game {
             }
         }
 
+        // Update smooth camera
+        const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+        this.camera.setTarget(playerScreen.x, playerScreen.y);
+        this.camera.update(deltaTime); // Camera not affected by hit pause
+
         // Handle input (only if player is alive)
         const rawMouse = this.input.getMousePosition();
         const zoom = this.input.getZoom();
-        // Get player screen position for camera (offset by 0.5 to center in tile)
-        const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+        // Get camera position for mouse conversion
+        const camPos = this.camera.getPosition();
         // Convert mouse position to world coordinates (accounting for zoom and camera)
         const mouse = {
-            x: (rawMouse.x - this.canvas.width / 2) / zoom + playerScreen.x,
-            y: (rawMouse.y - this.canvas.height / 2) / zoom + playerScreen.y
+            x: (rawMouse.x - this.canvas.width / 2) / zoom + camPos.x,
+            y: (rawMouse.y - this.canvas.height / 2) / zoom + camPos.y
         };
 
         // Check for enemy hover
@@ -261,6 +285,9 @@ export class Game {
             if (this.input.wasKeyJustPressed('q')) {
                 if (this.player.cleaveCooldown <= 0) {
                     this.player.cleaveReady = !this.player.cleaveReady;
+                    if (this.player.cleaveReady) {
+                        this.sound.playBuff();
+                    }
                 }
             }
 
@@ -282,7 +309,9 @@ export class Game {
 
             // 1 for health potion
             if (this.input.wasKeyJustPressed('1')) {
-                this.player.useHealthPotion();
+                if (this.player.useHealthPotion()) {
+                    this.sound.playHeal();
+                }
             }
 
             // E for earthquake (hold to charge, release to fire)
@@ -298,18 +327,66 @@ export class Game {
 
             // R for charge (dash to target and stun)
             if (this.input.wasKeyJustPressed('r')) {
-                this.player.startCharge();
+                if (this.player.movementLockout > 0) {
+                    // Buffer the charge input
+                    this.inputBuffer.buffer('charge');
+                } else {
+                    this.player.startCharge();
+                }
             }
+
+            // Check buffered inputs when lockout ends
+            if (this.player.movementLockout <= 0 && this.inputBuffer.hasAction()) {
+                const buffered = this.inputBuffer.consume();
+                if (buffered) {
+                    if (buffered.action === 'charge') this.player.startCharge();
+                }
+            }
+
+            // Track player position for charge trail particles
+            const prevX = this.player.x;
+            const prevY = this.player.y;
 
             // Update player
             const allBlockers = [...this.enemies, ...this.adds];
-            this.player.update(deltaTime, this.gameMap, allBlockers);
+            this.player.update(scaledDelta, this.gameMap, allBlockers);
+
+            // Add trail particles during charge
+            if (this.player.isCharging) {
+                const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+                this.particles.addTrail(playerScreen.x, playerScreen.y - 15, '#88aaff', 6, 0.2);
+            }
+
+            // Trigger effects when charge ends (hit target)
+            if (this.player.chargeJustEnded) {
+                if (this.player.chargeHitTarget) {
+                    const targetScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+                    this.screenShake.add(0.4);
+                    this.hitPause.trigger(0.08);
+                    this.particles.addBurst(targetScreen.x, targetScreen.y - 15, '#ffaa44', 12, 150);
+                    this.particles.addDust(targetScreen.x, targetScreen.y + 10, 8);
+                    this.sound.playImpact();
+                }
+                this.player.chargeJustEnded = false;
+            }
+
+            // Sound for starting charge
+            if (this.player.isCharging && !this.player.chargeWhooshPlayed) {
+                this.sound.playWhoosh();
+                this.player.chargeWhooshPlayed = true;
+            }
+            if (!this.player.isCharging) {
+                this.player.chargeWhooshPlayed = false;
+            }
 
             // Check for pending damage numbers from auto-attacks
             if (this.player.pendingDamageNumber) {
                 const dmg = this.player.pendingDamageNumber;
                 const pos = tileToScreenCenter(dmg.x, dmg.y);
                 this.combat.addDamageNumber(pos.x, pos.y - 40, dmg.damage);
+                // Small hit effect for auto-attacks
+                this.hitPause.trigger(0.03);
+                this.sound.playHit(0.4);
                 this.player.pendingDamageNumber = null;
             }
         } else {
@@ -319,7 +396,7 @@ export class Game {
         }
 
         for (const enemy of this.enemies) {
-            enemy.update(deltaTime, this.player, this.gameMap, this.groundHazards);
+            enemy.update(scaledDelta, this.player, this.gameMap, this.groundHazards);
 
             // Check if boss should spawn adds
             if (enemy.shouldSpawnAdds()) {
@@ -329,17 +406,22 @@ export class Game {
             // Check for bounce damage (dealt directly by boss, not through combat system)
             if (enemy.bounceDamageDealt) {
                 this.combat.addPlayerDamageNumber(enemy.bounceDamageDealt);
+                this.screenShake.add(0.5); // Big shake for bounce hit
+                this.hitPause.trigger(0.1);
+                this.sound.playHurt();
                 enemy.bounceDamageDealt = null;
             }
         }
 
         // Update adds (pass all adds for collision checking)
         for (const add of this.adds) {
-            add.update(deltaTime, this.player, this.gameMap, this.adds);
+            add.update(scaledDelta, this.player, this.gameMap, this.adds);
 
             // Check for damage dealt by add (for damage numbers)
             if (add.lastDamageDealt) {
                 this.combat.addPlayerDamageNumber(add.lastDamageDealt);
+                this.screenShake.add(0.15); // Small shake for slime hit
+                this.sound.playHurt();
                 add.lastDamageDealt = null;
             }
         }
@@ -349,6 +431,13 @@ export class Game {
         if (this.puzzlePhase === 'active') {
             allEnemies.push(...this.pillars.filter(p => p.isAlive));
         }
+
+        // Track enemy health before combat to detect hits
+        const enemyHealthBefore = new Map();
+        for (const e of allEnemies) {
+            enemyHealthBefore.set(e, e.health);
+        }
+
         this.combat.processAttack(this.player, allEnemies);
         this.combat.processCleave(this.player, allEnemies);
         this.combat.processShockwave(this.player, allEnemies);
@@ -357,18 +446,39 @@ export class Game {
         this.combat.processBladeStorm(this.player, allEnemies);
         this.combat.processSpinningDisk(this.player, allEnemies);
         this.combat.processEnemyAttacks(this.enemies, this.player);
-        this.combat.update(deltaTime);
+        this.combat.update(scaledDelta);
+
+        // Check for hits to trigger effects
+        for (const e of allEnemies) {
+            const before = enemyHealthBefore.get(e);
+            if (before && e.health < before) {
+                const damage = before - e.health;
+                // Scale effects by damage amount
+                if (damage >= 30) {
+                    this.screenShake.add(0.25);
+                    this.hitPause.trigger(0.05);
+                    this.sound.playHit(0.8);
+                } else if (damage >= 15) {
+                    this.screenShake.add(0.1);
+                    this.hitPause.trigger(0.03);
+                    this.sound.playHit(0.5);
+                } else {
+                    this.sound.playHit(0.3);
+                }
+            }
+        }
 
         // Update environmental hazards (lasers only in phase 2)
         const bossInPhase2 = this.enemies.some(e => e.phase === 2);
         if (bossInPhase2) {
-            this.laserSystem.update(deltaTime, this.player, (tileX, tileY, damage) => {
+            this.laserSystem.update(scaledDelta, this.player, (tileX, tileY, damage) => {
                 this.combat.addPlayerDamageNumber(damage);
+                this.screenShake.add(0.2);
             });
         }
 
         // Update ground hazards (fire pools, etc.)
-        this.groundHazards.update(deltaTime, this.player, (tileX, tileY, damage) => {
+        this.groundHazards.update(scaledDelta, this.player, (tileX, tileY, damage) => {
             this.combat.addPlayerDamageNumber(damage);
         });
 
@@ -468,15 +578,18 @@ export class Game {
 
         const zoom = this.input.getZoom();
 
-        // Get player screen position for camera centering (offset by 0.5 to center in tile)
-        const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+        // Get smooth camera position
+        const camPos = this.camera.getPosition();
 
-        // Apply camera transform: center on player, then zoom
+        // Get screen shake offset
+        const shake = this.screenShake.getOffset();
+
+        // Apply camera transform: center on camera position, then zoom, then shake
         this.ctx.save();
-        // Translate so player is at canvas center, then apply zoom
-        this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+        // Translate so camera is at canvas center, then apply zoom and shake
+        this.ctx.translate(this.canvas.width / 2 + shake.x, this.canvas.height / 2 + shake.y);
         this.ctx.scale(zoom, zoom);
-        this.ctx.translate(-playerScreen.x, -playerScreen.y);
+        this.ctx.translate(-camPos.x, -camPos.y);
 
         this.renderer.drawMap(this.gameMap);
 
@@ -497,8 +610,8 @@ export class Game {
         const rawMouse = this.input.getMousePosition();
         // Convert screen mouse to world coordinates
         const cursorMouse = {
-            x: (rawMouse.x - this.canvas.width / 2) / zoom + playerScreen.x,
-            y: (rawMouse.y - this.canvas.height / 2) / zoom + playerScreen.y
+            x: (rawMouse.x - this.canvas.width / 2) / zoom + camPos.x,
+            y: (rawMouse.y - this.canvas.height / 2) / zoom + camPos.y
         };
         this.renderer.drawCursor(cursorMouse.x, cursorMouse.y, this.gameMap);
 
@@ -565,6 +678,9 @@ export class Game {
 
         // Draw damage numbers
         this.renderer.drawDamageNumbers(this.combat.damageNumbers);
+
+        // Draw particles (trails, bursts, etc.)
+        this.particles.draw(this.ctx);
 
         // Update UI
         this.renderer.drawUI(this.player);

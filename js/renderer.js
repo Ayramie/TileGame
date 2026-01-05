@@ -173,7 +173,12 @@ export class Renderer {
         ctx.fill();
 
         // Draw player character (moved up by jump height when leaping)
-        this.playerSprite.draw(ctx, screenX, screenY - 18 - jumpHeight);
+        // Apply squash/stretch scale for juicy movement
+        ctx.save();
+        ctx.translate(screenX, screenY - 18 - jumpHeight);
+        ctx.scale(player.scaleX || 1, player.scaleY || 1);
+        this.playerSprite.draw(ctx, 0, 0);
+        ctx.restore();
 
         // Leap trail effect while airborne
         if (player.isLeaping && jumpHeight > 20) {

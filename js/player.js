@@ -136,6 +136,15 @@ export class Player {
         this.chargeTarget = null; // The enemy we're charging at
         this.chargeStartPos = null;
         this.chargeEndPos = null;
+        this.chargeJustEnded = false; // Flag for effects
+        this.chargeHitTarget = false; // Did we reach the target?
+        this.chargeWhooshPlayed = false; // Sound flag
+
+        // Squash and stretch for juicy movement
+        this.scaleX = 1;
+        this.scaleY = 1;
+        this.lastX = tileX;
+        this.lastY = tileY;
     }
 
     setMoveTarget(screenX, screenY, gameMap, enemies = null) {
@@ -742,6 +751,26 @@ export class Player {
         // Update discrete tile position
         this.tileX = Math.round(this.x);
         this.tileY = Math.round(this.y);
+
+        // Calculate velocity for squash/stretch
+        const vx = this.x - this.lastX;
+        const vy = this.y - this.lastY;
+        const speed = Math.sqrt(vx * vx + vy * vy) / deltaTime;
+
+        // Squash/stretch based on velocity
+        if (speed > 3) {
+            // Stretch in movement direction
+            const stretchAmount = Math.min(0.2, speed * 0.015);
+            this.scaleX = 1 - stretchAmount * 0.3;
+            this.scaleY = 1 + stretchAmount;
+        } else {
+            // Return to normal with easing
+            this.scaleX += (1 - this.scaleX) * Math.min(1, deltaTime * 12);
+            this.scaleY += (1 - this.scaleY) * Math.min(1, deltaTime * 12);
+        }
+
+        this.lastX = this.x;
+        this.lastY = this.y;
     }
 
     getAttackTiles() {
@@ -1063,6 +1092,8 @@ export class Player {
                 });
             }
 
+            // Clear charging telegraph tiles
+            this.earthquakeTiles = [];
             return true;
         }
 
@@ -1141,7 +1172,9 @@ export class Player {
     }
 
     getEarthquakeDamage() {
-        return this.earthquakeDamage;
+        const level = this.getEarthquakeChargeLevel();
+        // 25% increase per level: 20, 25, 31, 39, 49
+        return Math.floor(this.earthquakeDamage * Math.pow(1.25, level - 1));
     }
 
     // Leap Slam methods
@@ -1344,11 +1377,18 @@ export class Player {
         this.chargeCooldown = this.chargeCooldownMax;
         this.movementLockout = 0.2;
 
+        // Set flags for effects
+        this.chargeJustEnded = true;
+        this.chargeHitTarget = reachedTarget;
+
         // If we reached target, stun it
         if (reachedTarget && this.chargeTarget && this.chargeTarget.isAlive) {
             if (typeof this.chargeTarget.applyStun === 'function') {
                 this.chargeTarget.applyStun(this.chargeStunDuration);
             }
+            // Squash on impact
+            this.scaleX = 1.3;
+            this.scaleY = 0.7;
         }
 
         this.chargeTarget = null;
