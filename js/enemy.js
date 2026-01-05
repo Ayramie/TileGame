@@ -706,7 +706,7 @@ export class Add {
         // Movement
         this.moveSpeed = 3.5;
         this.moveTimer = 0;
-        this.moveCooldown = 0.35; // Slightly slower movement for smoother look
+        this.moveCooldown = 0.2; // Faster movement
 
         // Attack - simple auto-attack
         this.attackCooldown = 0;
@@ -789,9 +789,6 @@ export class Add {
 
         this.moveTimer = this.moveCooldown;
 
-        const dx = player.tileX - this.tileX;
-        const dy = player.tileY - this.tileY;
-
         // Helper to check if a tile is blocked
         const isBlocked = (tx, ty) => {
             if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return true;
@@ -804,16 +801,58 @@ export class Add {
             return false;
         };
 
-        // Build list of movement options, prioritized by how much they reduce distance to player
+        // Find the nearest empty tile adjacent to player (our goal)
+        const adjacentToPlayer = [
+            { x: player.tileX + 1, y: player.tileY },
+            { x: player.tileX - 1, y: player.tileY },
+            { x: player.tileX, y: player.tileY + 1 },
+            { x: player.tileX, y: player.tileY - 1 },
+            { x: player.tileX + 1, y: player.tileY + 1 },
+            { x: player.tileX + 1, y: player.tileY - 1 },
+            { x: player.tileX - 1, y: player.tileY + 1 },
+            { x: player.tileX - 1, y: player.tileY - 1 }
+        ];
+
+        // Find best empty spot adjacent to player
+        let bestTarget = null;
+        let bestDist = Infinity;
+        for (const spot of adjacentToPlayer) {
+            // Check if spot is empty (not blocked by another add)
+            let occupied = false;
+            for (const other of allAdds) {
+                if (other === this || !other.isAlive) continue;
+                if (other.tileX === spot.x && other.tileY === spot.y) {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (occupied) continue;
+            if (!gameMap.isWalkable(spot.x, spot.y)) continue;
+
+            const dist = Math.abs(spot.x - this.tileX) + Math.abs(spot.y - this.tileY);
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestTarget = spot;
+            }
+        }
+
+        // If no empty spot, just target player position
+        const targetX = bestTarget ? bestTarget.x : player.tileX;
+        const targetY = bestTarget ? bestTarget.y : player.tileY;
+
+        const dx = targetX - this.tileX;
+        const dy = targetY - this.tileY;
+
+        // Build list of movement options
         const options = [
-            { x: Math.sign(dx), y: 0 },           // Horizontal towards player
-            { x: 0, y: Math.sign(dy) },           // Vertical towards player
-            { x: Math.sign(dx), y: Math.sign(dy) }, // Diagonal towards player
-            { x: 0, y: Math.sign(dy) || 1 },      // Vertical (any)
+            { x: Math.sign(dx), y: 0 },
+            { x: 0, y: Math.sign(dy) },
+            { x: Math.sign(dx), y: Math.sign(dy) },
+            { x: 0, y: Math.sign(dy) || 1 },
             { x: 0, y: Math.sign(dy) || -1 },
-            { x: Math.sign(dx) || 1, y: 0 },      // Horizontal (any)
+            { x: Math.sign(dx) || 1, y: 0 },
             { x: Math.sign(dx) || -1, y: 0 },
-            { x: 1, y: 1 }, { x: 1, y: -1 },      // All diagonals
+            { x: 1, y: 1 }, { x: 1, y: -1 },
             { x: -1, y: 1 }, { x: -1, y: -1 }
         ].filter(o => o.x !== 0 || o.y !== 0);
 
@@ -828,10 +867,10 @@ export class Add {
             }
         }
 
-        // Sort by distance to player after move
+        // Sort by distance to target after move
         uniqueOptions.sort((a, b) => {
-            const distA = Math.abs(player.tileX - (this.tileX + a.x)) + Math.abs(player.tileY - (this.tileY + a.y));
-            const distB = Math.abs(player.tileX - (this.tileX + b.x)) + Math.abs(player.tileY - (this.tileY + b.y));
+            const distA = Math.abs(targetX - (this.tileX + a.x)) + Math.abs(targetY - (this.tileY + a.y));
+            const distB = Math.abs(targetX - (this.tileX + b.x)) + Math.abs(targetY - (this.tileY + b.y));
             return distA - distB;
         });
 
@@ -852,7 +891,6 @@ export class Add {
             { x: 1, y: 0 }, { x: -1, y: 0 },
             { x: 0, y: 1 }, { x: 0, y: -1 }
         ];
-        // Shuffle
         for (let i = wanderOptions.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [wanderOptions[i], wanderOptions[j]] = [wanderOptions[j], wanderOptions[i]];
