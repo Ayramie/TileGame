@@ -200,9 +200,9 @@ export class PortalDashSystem {
         this.dashTimer = 0;
 
         // Timing
-        this.telegraphDuration = 1.2; // Time to show indicator before dash
-        this.dashDuration = 0.4; // Time for dash to cross screen
-        this.delayBetweenDashes = 0.8; // Pause between dashes
+        this.telegraphDuration = 1.8; // Time to show indicator before dash
+        this.dashDuration = 0.6; // Time for dash to cross screen
+        this.delayBetweenDashes = 1.5; // Pause between dashes
         this.dashProgress = 0; // 0-1 progress across screen
 
         // Portal positions (will be set based on dash direction)

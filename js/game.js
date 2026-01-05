@@ -350,13 +350,23 @@ export class Game {
                     }
                 }
 
-                // Check if clicking on a cocoon
+                // Check if clicking on a cocoon (screen-distance based for easier targeting)
                 if (!clickedEnemy) {
+                    closestDist = Infinity;
                     for (const cocoon of this.cocoons) {
                         if (!cocoon.isAlive) continue;
-                        if (cocoon.occupiesTile(tileX, tileY)) {
+
+                        const cocoonScreen = tileToScreenCenter(cocoon.tileX + 0.5, cocoon.tileY + 0.5);
+                        const cocoonScreenY = cocoonScreen.y - 15; // Cocoon height offset
+
+                        const screenDx = mouse.x - cocoonScreen.x;
+                        const screenDy = mouse.y - cocoonScreenY;
+                        const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
+
+                        // Large click radius for cocoons (stationary, need quick targeting)
+                        if (screenDist < 50 && screenDist < closestDist) {
+                            closestDist = screenDist;
                             clickedEnemy = cocoon;
-                            break;
                         }
                     }
                 }
