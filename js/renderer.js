@@ -1259,27 +1259,23 @@ export class Renderer {
             }
         }
 
-        // Leap slam cooldown
+        // Charge cooldown
         const abilityR = document.getElementById('ability-r');
         if (abilityR) {
             const overlay = abilityR.querySelector('.cooldown-overlay');
-            if (player.leapSlamCooldown > 0) {
+            if (player.chargeCooldown > 0) {
                 abilityR.classList.add('on-cooldown');
-                const percent = (player.leapSlamCooldown / player.leapSlamCooldownMax) * 100;
+                abilityR.classList.remove('active');
+                const percent = (player.chargeCooldown / player.chargeCooldownMax) * 100;
                 overlay.style.height = `${percent}%`;
-            } else if (player.leapSlamAiming) {
-                // Show aiming state
-                abilityR.classList.add('charging');
-                abilityR.classList.remove('on-cooldown');
-                overlay.style.height = '0%';
-            } else if (player.isLeaping) {
-                // Show leaping state
-                abilityR.classList.add('charging');
+            } else if (player.isCharging) {
+                // Show charging state
+                abilityR.classList.add('active');
                 abilityR.classList.remove('on-cooldown');
                 overlay.style.height = '0%';
             } else {
                 abilityR.classList.remove('on-cooldown');
-                abilityR.classList.remove('charging');
+                abilityR.classList.remove('active');
                 overlay.style.height = '0%';
             }
         }

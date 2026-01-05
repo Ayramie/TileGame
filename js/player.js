@@ -47,6 +47,8 @@ export class Player {
         this.bladeStormCooldownMax = 6;
         this.bladeStormRotation = 0; // for visual spinning
         this.bladeStormLastMoveDir = { x: 1, y: 0 }; // direction when released
+        this.bladeStormActiveTime = 0; // how long blade storm has been held
+        this.bladeStormMaxDuration = 3; // max hold time before auto-release
 
         // Spinning disk projectile (released from blade storm)
         this.spinningDisk = null; // { x, y, dirX, dirY, speed, damage, lifetime }
@@ -124,6 +126,16 @@ export class Player {
         this.leapEndPos = null; // {x, y}
         this.leapHitPending = false;
         this.leapSlamTiles = []; // tiles affected by slam
+
+        // Charge ability (R) - dash to target and stun
+        this.chargeCooldown = 0;
+        this.chargeCooldownMax = 8;
+        this.chargeStunDuration = 1.0; // 1 second stun
+        this.chargeSpeed = 25; // tiles per second (very fast)
+        this.isCharging = false;
+        this.chargeTarget = null; // The enemy we're charging at
+        this.chargeStartPos = null;
+        this.chargeEndPos = null;
     }
 
     setMoveTarget(screenX, screenY, gameMap, enemies = null) {
@@ -415,10 +427,16 @@ export class Player {
             this.healthPotionCooldown -= deltaTime;
         }
 
-        // Update blade storm rotation visual
+        // Update blade storm rotation visual and duration
         if (this.bladeStormActive) {
             this.bladeStormRotation += deltaTime * 15; // Fast spin
             this.bladeStormTickTimer -= deltaTime;
+            this.bladeStormActiveTime += deltaTime;
+
+            // Auto-release after max duration
+            if (this.bladeStormActiveTime >= this.bladeStormMaxDuration) {
+                this.releaseBladeStorm();
+            }
         }
 
         // Update spinning disk projectile
@@ -455,6 +473,15 @@ export class Player {
 
         if (this.leapSlamCooldown > 0) {
             this.leapSlamCooldown -= deltaTime;
+        }
+        if (this.chargeCooldown > 0) {
+            this.chargeCooldown -= deltaTime;
+        }
+
+        // Update charge movement
+        if (this.isCharging) {
+            this.updateCharge(deltaTime, enemies);
+            return; // Skip normal movement while charging
         }
 
         // Update leap slam animation
@@ -774,6 +801,7 @@ export class Player {
         this.bladeStormActive = true;
         this.bladeStormTickTimer = 0; // Damage immediately
         this.bladeStormRotation = 0;
+        this.bladeStormActiveTime = 0; // Reset duration timer
         return true;
     }
 
@@ -1218,6 +1246,114 @@ export class Player {
     // Check if player is airborne (immune to ground damage)
     isAirborne() {
         return this.isLeaping;
+    }
+
+    // ========== CHARGE ABILITY ==========
+
+    startCharge() {
+        if (this.chargeCooldown > 0 || this.isCharging) return false;
+        if (!this.targetEnemy || !this.targetEnemy.isAlive) return false;
+
+        this.isCharging = true;
+        this.chargeTarget = this.targetEnemy;
+        this.chargeStartPos = { x: this.x, y: this.y };
+
+        // Calculate end position (next to target)
+        const targetCenterX = this.chargeTarget.tileX + (this.chargeTarget.width || 1) / 2;
+        const targetCenterY = this.chargeTarget.tileY + (this.chargeTarget.height || 1) / 2;
+        const dx = targetCenterX - this.x;
+        const dy = targetCenterY - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0) {
+            // Stop 1 tile away from target center
+            const stopDist = Math.max(0, dist - 1);
+            this.chargeEndPos = {
+                x: this.x + (dx / dist) * stopDist,
+                y: this.y + (dy / dist) * stopDist
+            };
+        } else {
+            this.chargeEndPos = { x: this.x, y: this.y };
+        }
+
+        // Clear movement
+        this.path = [];
+        this.targetTileX = this.tileX;
+        this.targetTileY = this.tileY;
+
+        return true;
+    }
+
+    updateCharge(deltaTime, enemies) {
+        if (!this.isCharging) return;
+
+        const dx = this.chargeEndPos.x - this.x;
+        const dy = this.chargeEndPos.y - this.y;
+        const distToTarget = Math.sqrt(dx * dx + dy * dy);
+
+        // Move towards target
+        const moveAmount = this.chargeSpeed * deltaTime;
+
+        if (moveAmount >= distToTarget) {
+            // Reached target
+            this.x = this.chargeEndPos.x;
+            this.y = this.chargeEndPos.y;
+            this.tileX = Math.round(this.x);
+            this.tileY = Math.round(this.y);
+            this.endCharge(true); // Successfully reached target
+        } else {
+            // Continue moving
+            const normX = dx / distToTarget;
+            const normY = dy / distToTarget;
+            const newX = this.x + normX * moveAmount;
+            const newY = this.y + normY * moveAmount;
+            const newTileX = Math.round(newX);
+            const newTileY = Math.round(newY);
+
+            // Check for collision with non-target enemies
+            let hitObstacle = false;
+            for (const enemy of enemies) {
+                if (!enemy.isAlive) continue;
+                if (enemy === this.chargeTarget) continue; // Don't collide with our target
+
+                if (enemy.occupiesTile(newTileX, newTileY)) {
+                    // Hit a non-target enemy - stop here
+                    this.x = this.tileX; // Stay at current tile
+                    this.y = this.tileY;
+                    hitObstacle = true;
+                    this.endCharge(false); // Failed to reach target
+                    break;
+                }
+            }
+
+            if (!hitObstacle) {
+                this.x = newX;
+                this.y = newY;
+                this.tileX = newTileX;
+                this.tileY = newTileY;
+            }
+        }
+
+        // Update target tile to match position
+        this.targetTileX = this.tileX;
+        this.targetTileY = this.tileY;
+    }
+
+    endCharge(reachedTarget) {
+        this.isCharging = false;
+        this.chargeCooldown = this.chargeCooldownMax;
+        this.movementLockout = 0.2;
+
+        // If we reached target, stun it
+        if (reachedTarget && this.chargeTarget && this.chargeTarget.isAlive) {
+            if (typeof this.chargeTarget.applyStun === 'function') {
+                this.chargeTarget.applyStun(this.chargeStunDuration);
+            }
+        }
+
+        this.chargeTarget = null;
+        this.chargeStartPos = null;
+        this.chargeEndPos = null;
     }
 
     setTargetEnemy(enemy) {

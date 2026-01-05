@@ -91,6 +91,23 @@ export class Enemy {
         this.currentBounce = 0;
         this.bounceProgress = 0; // 0-1 progress through current bounce
         this.bounceStartPos = { x: 0, y: 0 };
+
+        // Stun state
+        this.stunDuration = 0;
+    }
+
+    get isStunned() {
+        return this.stunDuration > 0;
+    }
+
+    applyStun(duration) {
+        this.stunDuration = Math.max(this.stunDuration, duration);
+        // Cancel current attack when stunned
+        if (this.attackPhase !== 'none') {
+            this.attackPhase = 'none';
+            this.currentAttack = null;
+            this.attackTiles = [];
+        }
     }
 
     update(deltaTime, player, gameMap, groundHazards = null) {
@@ -102,6 +119,13 @@ export class Enemy {
 
         if (this.hitFlashTimer > 0) {
             this.hitFlashTimer -= deltaTime;
+        }
+
+        // Update stun
+        if (this.stunDuration > 0) {
+            this.stunDuration -= deltaTime;
+            this.updateSmoothPosition(deltaTime);
+            return; // Can't do anything while stunned
         }
 
         // Check for phase transition at 50% health
@@ -716,6 +740,17 @@ export class Add {
         // Aggro
         this.aggroRange = 3; // Only chase player within this range
         this.isAggroed = false;
+
+        // Stun state
+        this.stunDuration = 0;
+    }
+
+    get isStunned() {
+        return this.stunDuration > 0;
+    }
+
+    applyStun(duration) {
+        this.stunDuration = Math.max(this.stunDuration, duration);
     }
 
     update(deltaTime, player, gameMap, allAdds = []) {
@@ -726,6 +761,13 @@ export class Add {
         }
         if (this.attackCooldown > 0) {
             this.attackCooldown -= deltaTime;
+        }
+
+        // Update stun
+        if (this.stunDuration > 0) {
+            this.stunDuration -= deltaTime;
+            this.updateSmoothPosition(deltaTime);
+            return; // Can't do anything while stunned
         }
 
         // Check distance to player

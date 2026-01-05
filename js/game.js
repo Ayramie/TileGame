@@ -191,36 +191,50 @@ export class Game {
                 const tileX = Math.floor(clickTile.x);
                 const tileY = Math.floor(clickTile.y);
                 let clickedEnemy = null;
+                let closestDist = Infinity;
 
-                // Check if clicking on an enemy (boss) - tile-based for large enemies
+                // Check if clicking on an enemy (boss) - use screen space to include visual model height
                 for (const enemy of this.enemies) {
-                    if (enemy.isAlive && enemy.occupiesTile(tileX, tileY)) {
+                    if (!enemy.isAlive) continue;
+
+                    // Get boss screen position (matching renderer)
+                    const enemyCenterX = enemy.smoothX + enemy.width / 2;
+                    const enemyCenterY = enemy.smoothY + enemy.height / 2;
+                    const enemyScreen = tileToScreenCenter(enemyCenterX, enemyCenterY);
+                    const enemyScreenY = enemyScreen.y - 20; // Boss floats above ground
+
+                    // Screen-space distance check (includes height)
+                    const screenDx = mouse.x - enemyScreen.x;
+                    const screenDy = mouse.y - enemyScreenY;
+                    const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
+
+                    // Click radius in pixels (boss visual is ~50-60px radius)
+                    if (screenDist < 70 && screenDist < closestDist) {
+                        closestDist = screenDist;
                         clickedEnemy = enemy;
-                        break;
                     }
                 }
 
-                // Check if clicking on an add - use distance-based detection for small 1x1 targets
+                // Check if clicking on an add - screen space detection for visual model
                 if (!clickedEnemy) {
-                    let closestAdd = null;
-                    let closestDist = 1.5; // Max click radius in tiles
-
+                    closestDist = Infinity;
                     for (const add of this.adds) {
                         if (!add.isAlive) continue;
 
-                        // Check distance from click to add's smooth position
-                        const dx = clickTile.x - add.smoothX;
-                        const dy = clickTile.y - add.smoothY;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        // Get slime screen position (matching renderer)
+                        const addScreen = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
+                        const addScreenY = addScreen.y - 8; // Slime height offset
 
-                        if (dist < closestDist) {
-                            closestDist = dist;
-                            closestAdd = add;
+                        // Screen-space distance check
+                        const screenDx = mouse.x - addScreen.x;
+                        const screenDy = mouse.y - addScreenY;
+                        const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
+
+                        // Click radius in pixels (slime visual is ~20-25px radius)
+                        if (screenDist < 35 && screenDist < closestDist) {
+                            closestDist = screenDist;
+                            clickedEnemy = add;
                         }
-                    }
-
-                    if (closestAdd) {
-                        clickedEnemy = closestAdd;
                     }
                 }
 
@@ -282,15 +296,9 @@ export class Game {
                 this.player.releaseEarthquake();
             }
 
-            // R for leap slam (hold to aim, release to leap)
+            // R for charge (dash to target and stun)
             if (this.input.wasKeyJustPressed('r')) {
-                this.player.startLeapSlamAim(mouse.x, mouse.y);
-            }
-            if (this.input.isKeyPressed('r') && this.player.leapSlamAiming) {
-                this.player.updateLeapSlamAim(mouse.x, mouse.y);
-            }
-            if (this.input.wasKeyJustReleased('r') && this.player.leapSlamAiming) {
-                this.player.releaseLeapSlam(this.gameMap);
+                this.player.startCharge();
             }
 
             // Update player
@@ -633,39 +641,46 @@ export class Game {
     }
 
     updateEnemyHover(mouse) {
-        const clickTile = isoToCart(mouse.x, mouse.y);
-        const tileX = Math.floor(clickTile.x);
-        const tileY = Math.floor(clickTile.y);
-
         this.hoveredEnemy = null;
+        let closestDist = Infinity;
 
-        // Check boss enemies (2x2)
+        // Check boss enemies - screen space to include visual model height
         for (const enemy of this.enemies) {
-            if (enemy.isAlive && enemy.occupiesTile(tileX, tileY)) {
+            if (!enemy.isAlive) continue;
+
+            const enemyCenterX = enemy.smoothX + enemy.width / 2;
+            const enemyCenterY = enemy.smoothY + enemy.height / 2;
+            const enemyScreen = tileToScreenCenter(enemyCenterX, enemyCenterY);
+            const enemyScreenY = enemyScreen.y - 20; // Boss floats above ground
+
+            const screenDx = mouse.x - enemyScreen.x;
+            const screenDy = mouse.y - enemyScreenY;
+            const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
+
+            if (screenDist < 70 && screenDist < closestDist) {
+                closestDist = screenDist;
                 this.hoveredEnemy = enemy;
-                return;
             }
         }
 
-        // Check adds (1x1) - use distance-based detection
-        let closestAdd = null;
-        let closestDist = 1.5;
+        // Check adds (slimes) - screen space detection
+        if (!this.hoveredEnemy) {
+            closestDist = Infinity;
+            for (const add of this.adds) {
+                if (!add.isAlive) continue;
 
-        for (const add of this.adds) {
-            if (!add.isAlive) continue;
+                const addScreen = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
+                const addScreenY = addScreen.y - 8; // Slime height offset
 
-            const dx = clickTile.x - add.smoothX;
-            const dy = clickTile.y - add.smoothY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+                const screenDx = mouse.x - addScreen.x;
+                const screenDy = mouse.y - addScreenY;
+                const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
 
-            if (dist < closestDist) {
-                closestDist = dist;
-                closestAdd = add;
+                if (screenDist < 35 && screenDist < closestDist) {
+                    closestDist = screenDist;
+                    this.hoveredEnemy = add;
+                }
             }
-        }
-
-        if (closestAdd) {
-            this.hoveredEnemy = closestAdd;
         }
     }
 }

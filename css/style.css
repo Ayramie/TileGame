@@ -95,7 +95,18 @@ body {
     animation: pulse-glow 0.5s infinite alternate;
 }
 
+.ability.active {
+    border-color: #44ff88;
+    box-shadow: 0 0 15px rgba(68, 255, 136, 0.6);
+    animation: pulse-glow-active 0.5s infinite alternate;
+}
+
 @keyframes pulse-glow {
     from { box-shadow: 0 0 10px rgba(68, 136, 255, 0.4); }
     to { box-shadow: 0 0 20px rgba(68, 136, 255, 0.8); }
+}
+
+@keyframes pulse-glow-active {
+    from { box-shadow: 0 0 10px rgba(68, 255, 136, 0.4); }
+    to { box-shadow: 0 0 20px rgba(68, 255, 136, 0.8); }
 }
