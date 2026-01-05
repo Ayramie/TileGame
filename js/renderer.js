@@ -1916,6 +1916,7 @@ export class Renderer {
         const ctx = this.ctx;
         const pos = tileToScreenCenter(scenery.x + 0.5, scenery.y + 0.5);
         const scale = scenery.scale;
+        const smallScale = scale * 0.5; // Half size for non-tree scenery
 
         ctx.save();
 
@@ -1924,16 +1925,16 @@ export class Renderer {
                 this.drawTree(pos.x, pos.y, scale, scenery.variant);
                 break;
             case 'rock':
-                this.drawRock(pos.x, pos.y, scale, scenery.variant);
+                this.drawRock(pos.x, pos.y, smallScale, scenery.variant);
                 break;
             case 'bush':
-                this.drawBush(pos.x, pos.y, scale, scenery.variant);
+                this.drawBush(pos.x, pos.y, smallScale, scenery.variant);
                 break;
             case 'grass':
-                this.drawGrass(pos.x, pos.y, scale, scenery.variant);
+                this.drawGrass(pos.x, pos.y, smallScale, scenery.variant);
                 break;
             case 'flowers':
-                this.drawFlowers(pos.x, pos.y, scale, scenery.variant);
+                this.drawFlowers(pos.x, pos.y, smallScale, scenery.variant);
                 break;
         }
 
