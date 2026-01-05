@@ -5,7 +5,7 @@ import { PlayerSprite } from './sprites.js';
 const PLAYER_SCALE = 0.8;
 const SLIME_SCALE = 0.7;
 const GREATER_SLIME_SCALE = 0.85;
-const BOSS_SCALE = 1.5;
+const BOSS_SCALE = 1.2;
 
 export class Renderer {
     constructor(canvas, ctx) {
