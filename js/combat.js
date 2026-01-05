@@ -4,6 +4,7 @@ export class CombatSystem {
     constructor() {
         this.damageNumbers = [];
         this.playerDamageNumbers = [];
+        this.diskHits = []; // Track disk impact positions for particles
     }
 
     processAttack(player, enemies) {
@@ -170,6 +171,8 @@ export class CombatSystem {
                 enemy.takeDamage(damage);
                 const screenPos = tileToScreenCenter(enemy.tileX + 0.5, enemy.tileY + 0.5);
                 this.addDamageNumber(screenPos.x, screenPos.y - 30, damage);
+                // Track hit position for particle effect
+                this.diskHits.push({ x: screenPos.x, y: screenPos.y - 15 });
             }
         }
     }
@@ -208,14 +211,23 @@ export class CombatSystem {
         }
     }
 
-    addDamageNumber(x, y, amount) {
+    addDamageNumber(x, y, amount, isHeal = false) {
+        const isCrit = amount > 40;
         this.damageNumbers.push({
             x: x + (Math.random() - 0.5) * 20,
             y: y,
             amount: amount,
             timer: 1.0,
-            velocityY: -50
+            velocityY: -80,
+            gravity: 60,
+            scale: isCrit ? 1.4 : 1.2,
+            isCrit: isCrit,
+            isHeal: isHeal
         });
+    }
+
+    addHealNumber(x, y, amount) {
+        this.addDamageNumber(x, y, amount, true);
     }
 
     addPlayerDamageNumber(amount) {
@@ -233,6 +245,12 @@ export class CombatSystem {
             const dn = this.damageNumbers[i];
             dn.timer -= deltaTime;
             dn.y += dn.velocityY * deltaTime;
+            dn.velocityY += dn.gravity * deltaTime;
+
+            // Scale shrinks from starting value to 0.8 over lifetime
+            const progress = 1 - dn.timer;
+            const startScale = dn.isCrit ? 1.4 : 1.2;
+            dn.scale = startScale - (startScale - 0.8) * progress;
 
             if (dn.timer <= 0) {
                 this.damageNumbers.splice(i, 1);

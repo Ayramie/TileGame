@@ -1342,14 +1342,35 @@ export class Renderer {
         const ctx = this.ctx;
 
         for (const dn of damageNumbers) {
-            const alpha = dn.timer;
-            ctx.fillStyle = `rgba(255, 100, 100, ${alpha})`;
+            const alpha = Math.min(1, dn.timer * 1.5);
+            const scale = dn.scale || 1;
+            const fontSize = Math.round(16 * scale);
+
+            // Color based on type: yellow for crits, green for heals, red for normal damage
+            let r, g, b;
+            if (dn.isHeal) {
+                r = 100; g = 255; b = 100;
+            } else if (dn.isCrit) {
+                r = 255; g = 220; b = 50;
+            } else {
+                r = 255; g = 100; b = 100;
+            }
+
+            ctx.save();
+            ctx.translate(dn.x, dn.y);
+            ctx.scale(scale, scale);
+
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
             ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
             ctx.lineWidth = 2;
-            ctx.font = 'bold 16px Arial';
+            ctx.font = `bold ${fontSize}px Arial`;
             ctx.textAlign = 'center';
-            ctx.strokeText(`-${dn.amount}`, dn.x, dn.y);
-            ctx.fillText(`-${dn.amount}`, dn.x, dn.y);
+
+            const text = dn.isHeal ? `+${dn.amount}` : `-${dn.amount}`;
+            ctx.strokeText(text, 0, 0);
+            ctx.fillText(text, 0, 0);
+
+            ctx.restore();
         }
     }
 
@@ -1365,12 +1386,29 @@ export class Renderer {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(centerX - barWidth / 2 - 2, bottomY - 2, barWidth + 4, barHeight + 4);
 
-        // Health fill
-        const healthPercent = Math.max(0, player.health / player.maxHealth);
+        // Use smoothed values for display
+        const displayHealth = player.displayHealth !== undefined ? player.displayHealth : player.health;
+        const healthTrail = player.healthTrail !== undefined ? player.healthTrail : player.health;
+        const healthFlash = player.healthFlashTimer > 0;
+
+        // Health trail (darker red, shows damage taken)
+        const trailPercent = Math.max(0, healthTrail / player.maxHealth);
+        ctx.fillStyle = '#881111';
+        ctx.fillRect(centerX - barWidth / 2, bottomY, barWidth * trailPercent, barHeight);
+
+        // Current health fill (smooth)
+        const healthPercent = Math.max(0, displayHealth / player.maxHealth);
         const gradient = ctx.createLinearGradient(centerX - barWidth / 2, 0, centerX + barWidth / 2, 0);
-        gradient.addColorStop(0, '#cc3333');
-        gradient.addColorStop(0.5, '#ff4444');
-        gradient.addColorStop(1, '#cc3333');
+        if (healthFlash) {
+            // Flash white/red when damaged
+            gradient.addColorStop(0, '#ff6666');
+            gradient.addColorStop(0.5, '#ffffff');
+            gradient.addColorStop(1, '#ff6666');
+        } else {
+            gradient.addColorStop(0, '#cc3333');
+            gradient.addColorStop(0.5, '#ff4444');
+            gradient.addColorStop(1, '#cc3333');
+        }
         ctx.fillStyle = gradient;
         ctx.fillRect(centerX - barWidth / 2, bottomY, barWidth * healthPercent, barHeight);
 
@@ -1381,16 +1419,16 @@ export class Renderer {
             ctx.fillRect(centerX - barWidth / 2, bottomY + barHeight + 2, barWidth * shieldPercent, 6);
         }
 
-        // Border
-        ctx.strokeStyle = '#ffffff';
+        // Border (flash when damaged)
+        ctx.strokeStyle = healthFlash ? '#ff8888' : '#ffffff';
         ctx.lineWidth = 2;
         ctx.strokeRect(centerX - barWidth / 2, bottomY, barWidth, barHeight);
 
-        // Health text
+        // Health text (show actual health, not smoothed)
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(`${player.health} / ${player.maxHealth}`, centerX, bottomY + 15);
+        ctx.fillText(`${Math.round(player.health)} / ${player.maxHealth}`, centerX, bottomY + 15);
 
         // Draw player damage numbers above health bar
         for (const dn of playerDamageNumbers) {

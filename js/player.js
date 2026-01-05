@@ -12,6 +12,9 @@ export class Player {
         this.speed = 5; // tiles per second
         this.health = 100;
         this.maxHealth = 100;
+        this.displayHealth = 100; // For smooth health bar animation
+        this.healthTrail = 100; // Delayed health showing damage taken
+        this.healthFlashTimer = 0; // Flash when damaged
         this.isAlive = true;
         this.attackDamage = 25;
         this.cleaveDamage = 40;
@@ -449,6 +452,23 @@ export class Player {
         }
         if (this.healthPotionCooldown > 0) {
             this.healthPotionCooldown -= deltaTime;
+        }
+
+        // Health bar smoothing
+        if (this.healthFlashTimer > 0) {
+            this.healthFlashTimer -= deltaTime;
+        }
+        // Display health lerps quickly toward actual health
+        const healthDiff = this.health - this.displayHealth;
+        this.displayHealth += healthDiff * Math.min(1, deltaTime * 10);
+        // Health trail lerps slowly (shows damage taken)
+        const trailDiff = this.health - this.healthTrail;
+        if (trailDiff < 0) {
+            // Damaged - trail follows slowly
+            this.healthTrail += trailDiff * Math.min(1, deltaTime * 3);
+        } else {
+            // Healed - trail catches up quickly
+            this.healthTrail += trailDiff * Math.min(1, deltaTime * 10);
         }
 
         // Update blade storm rotation visual and duration
@@ -1419,6 +1439,7 @@ export class Player {
         if (!this.isAlive) return;
 
         this.health -= amount;
+        this.healthFlashTimer = 0.15; // Flash red when damaged
         if (this.health <= 0) {
             this.health = 0;
             this.isAlive = false;

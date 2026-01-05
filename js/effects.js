@@ -170,6 +170,29 @@ export class SoundSystem {
         osc.start();
         osc.stop(this.context.currentTime + 0.2);
     }
+
+    // Play ability ready sound (short high-pitched ding)
+    playReady() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        if (!this.context) return;
+
+        const osc = this.context.createOscillator();
+        const gain = this.context.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.context.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, this.context.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1320, this.context.currentTime + 0.05);
+
+        gain.gain.setValueAtTime(this.masterVolume * 0.15, this.context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.context.currentTime + 0.1);
+
+        osc.start();
+        osc.stop(this.context.currentTime + 0.1);
+    }
 }
 
 // Easing functions

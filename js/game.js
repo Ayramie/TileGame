@@ -45,6 +45,19 @@ export class Game {
         this.inputBuffer = new InputBuffer();
         this.sound = new SoundSystem();
 
+        // Footstep particles
+        this.footstepTimer = 0;
+        this.footstepInterval = 0.15;
+
+        // Cooldown ready sound tracking
+        this.prevCooldowns = {
+            cleave: 0,
+            bladeStorm: 0,
+            earthquake: 0,
+            leapSlam: 0,
+            potion: 0
+        };
+
         this.lastTime = 0;
         this.running = false;
 
@@ -316,15 +329,15 @@ export class Game {
 
                         // Get slime screen position (matching renderer)
                         const addScreen = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
-                        const addScreenY = addScreen.y - 18; // Slime height offset
+                        const addScreenY = addScreen.y - 13; // Slime height offset (18 * 0.7 scale)
 
                         // Screen-space distance check
                         const screenDx = mouse.x - addScreen.x;
                         const screenDy = mouse.y - addScreenY;
                         const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
 
-                        // Click radius in pixels (slime visual is ~20-25px radius)
-                        if (screenDist < 35 && screenDist < closestDist) {
+                        // Click radius in pixels - tight to character frame
+                        if (screenDist < 18 && screenDist < closestDist) {
                             closestDist = screenDist;
                             clickedEnemy = add;
                         }
@@ -338,14 +351,14 @@ export class Game {
                         if (!greater.isAlive) continue;
 
                         const greaterScreen = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
-                        const greaterScreenY = greaterScreen.y - 22; // Greater slime height offset
+                        const greaterScreenY = greaterScreen.y - 19; // Greater slime height offset (22 * 0.85 scale)
 
                         const screenDx = mouse.x - greaterScreen.x;
                         const screenDy = mouse.y - greaterScreenY;
                         const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
 
-                        // Larger click radius for greater slime
-                        if (screenDist < 45 && screenDist < closestDist) {
+                        // Click radius tight to character frame
+                        if (screenDist < 25 && screenDist < closestDist) {
                             closestDist = screenDist;
                             clickedEnemy = greater;
                         }
@@ -436,6 +449,9 @@ export class Game {
             if (this.input.wasKeyJustPressed('1')) {
                 if (this.player.useHealthPotion()) {
                     this.sound.playHeal();
+                    // Show green heal number above player
+                    const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+                    this.combat.addHealNumber(playerScreen.x, playerScreen.y - 40, this.player.healthPotionHeal);
                 }
             }
 
@@ -476,6 +492,19 @@ export class Game {
             const allBlockers = [...this.enemies, ...this.adds, ...this.greaterSlimes];
             this.player.update(scaledDelta, this.gameMap, allBlockers);
 
+            // Footstep dust particles when moving
+            const movedDist = Math.sqrt((this.player.x - prevX) ** 2 + (this.player.y - prevY) ** 2);
+            if (movedDist > 0.01 && !this.player.isCharging && !this.player.leaping) {
+                this.footstepTimer -= scaledDelta;
+                if (this.footstepTimer <= 0) {
+                    this.footstepTimer = this.footstepInterval;
+                    const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
+                    this.particles.addDust(playerScreen.x, playerScreen.y + 5, 2);
+                }
+            } else {
+                this.footstepTimer = 0;
+            }
+
             // Add trail particles during charge
             if (this.player.isCharging) {
                 const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);
@@ -514,6 +543,30 @@ export class Game {
                 this.sound.playHit(0.4);
                 this.player.pendingDamageNumber = null;
             }
+
+            // Check for ability cooldowns becoming ready
+            const p = this.player;
+            if (this.prevCooldowns.cleave > 0 && p.cleaveCooldown <= 0) {
+                this.sound.playReady();
+            }
+            if (this.prevCooldowns.bladeStorm > 0 && p.bladeStormCooldown <= 0) {
+                this.sound.playReady();
+            }
+            if (this.prevCooldowns.earthquake > 0 && p.earthquakeCooldown <= 0) {
+                this.sound.playReady();
+            }
+            if (this.prevCooldowns.leapSlam > 0 && p.leapSlamCooldown <= 0) {
+                this.sound.playReady();
+            }
+            if (this.prevCooldowns.potion > 0 && p.healthPotionCooldown <= 0) {
+                this.sound.playReady();
+            }
+            // Update tracked cooldowns
+            this.prevCooldowns.cleave = p.cleaveCooldown;
+            this.prevCooldowns.bladeStorm = p.bladeStormCooldown;
+            this.prevCooldowns.earthquake = p.earthquakeCooldown;
+            this.prevCooldowns.leapSlam = p.leapSlamCooldown;
+            this.prevCooldowns.potion = p.healthPotionCooldown;
         } else {
             // Consume clicks so they don't queue up
             this.input.consumeLeftClick();
@@ -541,7 +594,18 @@ export class Game {
         // Update adds (pass all adds for collision checking)
         const allMobs = [...this.adds, ...this.greaterSlimes];
         for (const add of this.adds) {
+            // Check if just started dying (spawn death particles)
+            const wasDying = add.isDying;
+            const oldDeathTimer = add.deathTimer;
+
             add.update(scaledDelta, this.player, this.gameMap, allMobs);
+
+            // Spawn death particles when death just started
+            if (add.isDying && oldDeathTimer === 0 && !add.deathParticlesSpawned) {
+                const pos = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
+                this.particles.addBurst(pos.x, pos.y - 15, '#55aa55', 10, 80); // Green slime splatter
+                add.deathParticlesSpawned = true;
+            }
 
             // Check for damage dealt by add (for damage numbers)
             if (add.lastDamageDealt) {
@@ -554,7 +618,16 @@ export class Game {
 
         // Update greater slimes
         for (const greater of this.greaterSlimes) {
+            const oldDeathTimer = greater.deathTimer;
+
             greater.update(scaledDelta, this.player, this.gameMap, allMobs);
+
+            // Spawn death particles when death just started
+            if (greater.isDying && oldDeathTimer === 0 && !greater.deathParticlesSpawned) {
+                const pos = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
+                this.particles.addBurst(pos.x, pos.y - 20, '#8855aa', 14, 100); // Purple slime splatter
+                greater.deathParticlesSpawned = true;
+            }
 
             if (greater.lastDamageDealt) {
                 this.combat.addPlayerDamageNumber(greater.lastDamageDealt);
@@ -588,6 +661,15 @@ export class Game {
         this.combat.processEarthquake(this.player, allEnemies);
         this.combat.processBladeStorm(this.player, allEnemies);
         this.combat.processSpinningDisk(this.player, allEnemies);
+
+        // Spawn particles for disk impacts
+        for (const hit of this.combat.diskHits) {
+            this.particles.addBurst(hit.x, hit.y, '#88ccff', 8, 100);
+            this.particles.addBurst(hit.x, hit.y, '#ffffff', 4, 60);
+            this.sound.playHit(0.3);
+        }
+        this.combat.diskHits = [];
+
         this.combat.processEnemyAttacks(this.enemies, this.player);
         this.combat.update(scaledDelta);
 
@@ -1136,13 +1218,13 @@ export class Game {
                 if (!add.isAlive) continue;
 
                 const addScreen = tileToScreenCenter(add.smoothX + 0.5, add.smoothY + 0.5);
-                const addScreenY = addScreen.y - 18; // Slime height offset
+                const addScreenY = addScreen.y - 13; // Slime height offset (18 * 0.7 scale)
 
                 const screenDx = mouse.x - addScreen.x;
                 const screenDy = mouse.y - addScreenY;
                 const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
 
-                if (screenDist < 35 && screenDist < closestDist) {
+                if (screenDist < 18 && screenDist < closestDist) {
                     closestDist = screenDist;
                     this.hoveredEnemy = add;
                 }
@@ -1156,13 +1238,13 @@ export class Game {
                 if (!greater.isAlive) continue;
 
                 const greaterScreen = tileToScreenCenter(greater.smoothX + 0.5, greater.smoothY + 0.5);
-                const greaterScreenY = greaterScreen.y - 22;
+                const greaterScreenY = greaterScreen.y - 19; // 22 * 0.85 scale
 
                 const screenDx = mouse.x - greaterScreen.x;
                 const screenDy = mouse.y - greaterScreenY;
                 const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
 
-                if (screenDist < 45 && screenDist < closestDist) {
+                if (screenDist < 25 && screenDist < closestDist) {
                     closestDist = screenDist;
                     this.hoveredEnemy = greater;
                 }
