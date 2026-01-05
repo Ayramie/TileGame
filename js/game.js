@@ -1,10 +1,10 @@
 import { GameMap, getCanvasSize, tileToScreenCenter, isoToCart, cartToIso, MAP_WIDTH, MAP_HEIGHT } from './map.js';
 import { Player } from './player.js';
-import { Enemy, Add, Pillar, GreaterSlime } from './enemy.js';
+import { Enemy, Add, Pillar, GreaterSlime, Cocoon } from './enemy.js';
 import { InputHandler } from './input.js';
 import { CombatSystem } from './combat.js';
 import { Renderer } from './renderer.js';
-import { LaserHazardSystem, GroundHazardSystem } from './hazards.js';
+import { LaserHazardSystem, GroundHazardSystem, PortalDashSystem } from './hazards.js';
 import { ScreenShake, HitPause, ParticleSystem, SmoothCamera, InputBuffer, SoundSystem } from './effects.js';
 
 export class Game {
@@ -111,6 +111,8 @@ export class Game {
         this.combat = new CombatSystem();
         this.laserSystem = new LaserHazardSystem();
         this.groundHazards = new GroundHazardSystem();
+        this.portalDashSystem = new PortalDashSystem();
+        this.cocoons = [];
 
         // Center tile position
         this.centerTileX = Math.floor(MAP_WIDTH / 2);
@@ -348,6 +350,17 @@ export class Game {
                     }
                 }
 
+                // Check if clicking on a cocoon
+                if (!clickedEnemy) {
+                    for (const cocoon of this.cocoons) {
+                        if (!cocoon.isAlive) continue;
+                        if (cocoon.occupiesTile(tileX, tileY)) {
+                            clickedEnemy = cocoon;
+                            break;
+                        }
+                    }
+                }
+
                 // Check if clicking on a pillar (during puzzle phase)
                 if (!clickedEnemy && this.puzzlePhase === 'active') {
                     for (const pillar of this.pillars) {
@@ -544,8 +557,8 @@ export class Game {
             this.updateRespawns(scaledDelta);
         }
 
-        // Process combat (include adds, greater slimes, and pillars as enemies)
-        const allEnemies = [...this.enemies, ...this.adds, ...this.greaterSlimes];
+        // Process combat (include adds, greater slimes, cocoons, and pillars as enemies)
+        const allEnemies = [...this.enemies, ...this.adds, ...this.greaterSlimes, ...this.cocoons];
         if (this.puzzlePhase === 'active') {
             allEnemies.push(...this.pillars.filter(p => p.isAlive));
         }
@@ -586,13 +599,18 @@ export class Game {
             }
         }
 
-        // Update environmental hazards (lasers only in phase 2)
-        const bossInPhase2 = this.enemies.some(e => e.phase === 2);
-        if (bossInPhase2) {
-            this.laserSystem.update(scaledDelta, this.player, (tileX, tileY, damage) => {
+        // Update portal dash system (replaces lasers in phase 2)
+        if (this.portalDashSystem.isActive()) {
+            this.portalDashSystem.update(scaledDelta, this.player, (tileX, tileY, damage) => {
                 this.combat.addPlayerDamageNumber(damage);
-                this.screenShake.add(0.2);
+                this.screenShake.add(0.4); // Big shake for boss dash hit
+                this.sound.playHurt();
             });
+        }
+
+        // Update cocoons
+        for (const cocoon of this.cocoons) {
+            cocoon.update(scaledDelta);
         }
 
         // Update ground hazards (fire pools, etc.)
@@ -736,8 +754,8 @@ export class Game {
         // Draw ground hazards (fire pools - before other effects)
         this.renderer.drawGroundHazards(this.groundHazards);
 
-        // Draw laser hazards (before entities)
-        this.renderer.drawLasers(this.laserSystem);
+        // Draw portal dash telegraph (before entities)
+        this.renderer.drawPortalDash(this.portalDashSystem);
 
         // Draw enemy telegraphs (before entities so they appear under)
         for (const enemy of this.enemies) {
@@ -747,9 +765,10 @@ export class Game {
         // Collect all entities for depth sorting (use smooth positions)
         const entities = [
             { type: 'player', obj: this.player, depth: this.player.x + this.player.y },
-            ...this.enemies.map(e => ({ type: 'enemy', obj: e, depth: e.tileX + e.tileY + 1 })),
+            ...this.enemies.filter(e => !e.isHidden).map(e => ({ type: 'enemy', obj: e, depth: e.tileX + e.tileY + 1 })),
             ...this.adds.map(a => ({ type: 'add', obj: a, depth: a.tileX + a.tileY })),
             ...this.greaterSlimes.map(g => ({ type: 'greater', obj: g, depth: g.tileX + g.tileY })),
+            ...this.cocoons.filter(c => c.isAlive).map(c => ({ type: 'cocoon', obj: c, depth: c.tileX + c.tileY })),
             ...this.pillars.filter(p => p.isAlive).map(p => ({ type: 'pillar', obj: p, depth: p.tileX + p.tileY }))
         ];
 
@@ -775,6 +794,9 @@ export class Game {
             } else if (entity.type === 'pillar') {
                 const isTargeted = this.player.targetEnemy === entity.obj;
                 this.renderer.drawPillar(entity.obj, isTargeted);
+            } else if (entity.type === 'cocoon') {
+                const isTargeted = this.player.targetEnemy === entity.obj;
+                this.renderer.drawCocoon(entity.obj, isTargeted);
             }
         }
 
@@ -821,7 +843,7 @@ export class Game {
     }
 
     spawnAdds(boss) {
-        // Spawn 4 adds in cardinal directions from boss
+        // Phase 2: Spawn 4 cocoons and start portal dash attack
         const centerX = boss.tileX + 1;
         const centerY = boss.tileY + 1;
         const spawnDistance = 4;
@@ -833,12 +855,39 @@ export class Game {
             { x: centerX, y: centerY + spawnDistance }
         ];
 
+        // Spawn cocoons instead of slimes
         for (const pos of spawnPositions) {
-            const add = new Add(pos.x, pos.y);
-            add.aggroRange = Infinity; // Boss fight adds always aggro
-            add.isAggroed = true; // Start aggroed
-            this.adds.push(add);
+            const cocoon = new Cocoon(pos.x, pos.y);
+            this.cocoons.push(cocoon);
         }
+
+        // Hide the boss and start portal dash attack
+        boss.isHidden = true;
+        this.portalDashSystem.start(() => {
+            // Called when all 3 dashes complete
+            this.onPortalDashComplete(boss);
+        });
+    }
+
+    onPortalDashComplete(boss) {
+        // Hatch surviving cocoons into greater slimes
+        for (const cocoon of this.cocoons) {
+            const greaterSlime = cocoon.hatch();
+            if (greaterSlime) {
+                greaterSlime.isAggroed = true;
+                greaterSlime.aggroRange = Infinity;
+                this.greaterSlimes.push(greaterSlime);
+            }
+        }
+        // Clear cocoons array
+        this.cocoons = [];
+
+        // Show the boss again and move to center
+        boss.isHidden = false;
+        boss.tileX = this.centerTileX - 1;
+        boss.tileY = this.centerTileY - 1;
+        boss.smoothX = boss.tileX;
+        boss.smoothY = boss.tileY;
     }
 
     spawnMobbingWave() {

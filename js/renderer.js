@@ -1701,4 +1701,216 @@ export class Renderer {
             }
         }
     }
+
+    drawCocoon(cocoon, isTargeted = false) {
+        if (!cocoon.isAlive) return;
+
+        const ctx = this.ctx;
+        const pos = tileToScreenCenter(cocoon.tileX + 0.5, cocoon.tileY + 0.5);
+        const screenX = pos.x;
+        const screenY = pos.y - 15;
+
+        ctx.save();
+
+        // Target indicator
+        if (isTargeted) {
+            const targetPulse = Math.sin(this.time * 4) * 0.3 + 0.7;
+            ctx.strokeStyle = `rgba(255, 50, 50, ${targetPulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(screenX, pos.y - 5, 14, 6, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(screenX, pos.y - 5, 10, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pulsing effect
+        const pulse = 1 + Math.sin(cocoon.pulseTimer * 3) * 0.1;
+        const hitFlash = cocoon.hitFlashTimer > 0;
+
+        // Cocoon body (egg shape)
+        const baseColor = hitFlash ? '#ff8888' : '#9966aa';
+        const darkColor = hitFlash ? '#ff5555' : '#664488';
+        const gradient = ctx.createRadialGradient(screenX - 2, screenY - 5, 0, screenX, screenY, 12 * pulse);
+        gradient.addColorStop(0, hitFlash ? '#ffaaaa' : '#bb99cc');
+        gradient.addColorStop(0.6, baseColor);
+        gradient.addColorStop(1, darkColor);
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(screenX, screenY, 10 * pulse, 14 * pulse, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Vein pattern
+        ctx.strokeStyle = hitFlash ? '#ff4444' : '#553377';
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(screenX - 5, screenY - 8);
+        ctx.quadraticCurveTo(screenX - 2, screenY, screenX - 4, screenY + 8);
+        ctx.moveTo(screenX + 5, screenY - 8);
+        ctx.quadraticCurveTo(screenX + 2, screenY, screenX + 4, screenY + 8);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Glow effect when pulsing
+        if (pulse > 1.05) {
+            ctx.fillStyle = 'rgba(150, 100, 200, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(screenX, screenY, 14 * pulse, 18 * pulse, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+
+        // Health bar
+        this.drawHealthBar(screenX - 12, screenY - 22, 24, 3, cocoon.health, cocoon.maxHealth, '#9966aa');
+    }
+
+    drawPortalDash(portalDashSystem) {
+        if (!portalDashSystem.isActive()) return;
+
+        const ctx = this.ctx;
+        const dash = portalDashSystem.getCurrentDash();
+        if (!dash) return;
+
+        const phase = portalDashSystem.getPhase();
+        const progress = portalDashSystem.getProgress();
+        const tiles = portalDashSystem.getTelegraphTiles();
+
+        // Draw telegraph tiles
+        if (phase === 'telegraph' || phase === 'execute') {
+            let alpha, fillColor, strokeColor;
+
+            if (phase === 'telegraph') {
+                // Pulsing warning
+                const pulseSpeed = 4 + progress * 12;
+                const pulse = (Math.sin(this.time * pulseSpeed) + 1) / 2;
+                alpha = 0.1 + pulse * 0.2 + progress * 0.3;
+
+                fillColor = `rgba(180, 50, 255, ${alpha * 0.5})`;
+                strokeColor = `rgba(200, 100, 255, ${alpha * 0.7})`;
+            } else {
+                // Execute phase - bright
+                alpha = 0.6;
+                fillColor = `rgba(200, 50, 255, 0.4)`;
+                strokeColor = `rgba(255, 150, 255, 0.8)`;
+            }
+
+            // Draw affected tiles
+            for (const tile of tiles) {
+                this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
+            }
+        }
+
+        // Draw portals
+        const portals = portalDashSystem.getPortals();
+        if (portals) {
+            this.drawPortal(portals.start.x, portals.start.y, phase);
+            this.drawPortal(portals.end.x, portals.end.y, phase);
+        }
+
+        // Draw boss during execute phase
+        if (phase === 'execute') {
+            const bossPos = portalDashSystem.getBossPosition();
+            if (bossPos) {
+                this.drawDashingBoss(bossPos.x, bossPos.y, dash.direction);
+            }
+        }
+    }
+
+    drawPortal(tileX, tileY, phase) {
+        const ctx = this.ctx;
+        const pos = tileToScreenCenter(tileX + 0.5, tileY + 0.5);
+
+        ctx.save();
+
+        const pulseSize = 1 + Math.sin(this.time * 6) * 0.2;
+        const alpha = phase === 'execute' ? 1 : 0.6 + Math.sin(this.time * 4) * 0.3;
+
+        // Portal glow
+        ctx.shadowColor = '#aa44ff';
+        ctx.shadowBlur = 20;
+
+        // Outer ring
+        ctx.strokeStyle = `rgba(200, 100, 255, ${alpha})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(pos.x, pos.y - 10, 25 * pulseSize, 35 * pulseSize, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner void
+        const gradient = ctx.createRadialGradient(pos.x, pos.y - 10, 0, pos.x, pos.y - 10, 20 * pulseSize);
+        gradient.addColorStop(0, `rgba(30, 0, 50, ${alpha})`);
+        gradient.addColorStop(0.7, `rgba(100, 50, 150, ${alpha * 0.5})`);
+        gradient.addColorStop(1, `rgba(150, 100, 200, 0)`);
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(pos.x, pos.y - 10, 20 * pulseSize, 28 * pulseSize, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Swirl effect
+        ctx.strokeStyle = `rgba(255, 200, 255, ${alpha * 0.5})`;
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 3; i++) {
+            const angle = this.time * 3 + i * Math.PI * 2 / 3;
+            const r = 12 * pulseSize;
+            ctx.beginPath();
+            ctx.arc(pos.x + Math.cos(angle) * r * 0.5, pos.y - 10 + Math.sin(angle) * r * 0.7, 3, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    drawDashingBoss(tileX, tileY, direction) {
+        const ctx = this.ctx;
+        const pos = tileToScreenCenter(tileX + 0.5, tileY + 0.5);
+        const screenX = pos.x;
+        const screenY = pos.y - 30;
+
+        ctx.save();
+
+        // Motion blur effect
+        ctx.globalAlpha = 0.8;
+
+        // Trail
+        const trailLength = direction === 'horizontal' ? 40 : 0;
+        const trailHeight = direction === 'vertical' ? 40 : 0;
+        ctx.fillStyle = 'rgba(150, 100, 200, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(screenX - trailLength / 2, screenY - trailHeight / 2, 35 + trailLength / 2, 35 + trailHeight / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Boss body (simplified version during dash)
+        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 30);
+        gradient.addColorStop(0, '#bb99ff');
+        gradient.addColorStop(0.5, '#8855cc');
+        gradient.addColorStop(1, '#553388');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(screenX, screenY, 28, 28, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eyes (angry)
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.ellipse(screenX - 8, screenY - 5, 6, 8, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX + 8, screenY - 5, 6, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(screenX - 8, screenY - 5, 3, 0, Math.PI * 2);
+        ctx.arc(screenX + 8, screenY - 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
 }

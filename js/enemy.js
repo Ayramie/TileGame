@@ -1275,3 +1275,65 @@ export class GreaterSlime {
         return tx === this.tileX && ty === this.tileY;
     }
 }
+
+// Cocoon - stationary egg that can hatch into a GreaterSlime
+export class Cocoon {
+    constructor(tileX, tileY) {
+        this.tileX = tileX;
+        this.tileY = tileY;
+        this.width = 1;
+        this.height = 1;
+        this.smoothX = tileX;
+        this.smoothY = tileY;
+        this.health = 50;
+        this.maxHealth = 50;
+        this.isAlive = true;
+        this.hitFlashTimer = 0;
+        this.hitFlashDuration = 0.1;
+
+        // Cocoon doesn't move or attack
+        this.attackDamage = 0;
+
+        // Hatching state
+        this.hatched = false;
+        this.pulseTimer = 0;
+    }
+
+    update(deltaTime) {
+        if (!this.isAlive) return;
+
+        if (this.hitFlashTimer > 0) {
+            this.hitFlashTimer -= deltaTime;
+        }
+
+        // Pulsing animation
+        this.pulseTimer += deltaTime;
+    }
+
+    takeDamage(amount) {
+        if (!this.isAlive) return;
+        this.health -= amount;
+        this.hitFlashTimer = this.hitFlashDuration;
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isAlive = false;
+        }
+    }
+
+    // Called when boss finishes dashing - returns a GreaterSlime if alive
+    hatch() {
+        if (!this.isAlive || this.hatched) return null;
+        this.hatched = true;
+        this.isAlive = false;
+        return new GreaterSlime(this.tileX, this.tileY);
+    }
+
+    occupiesTile(tx, ty) {
+        return tx === this.tileX && ty === this.tileY;
+    }
+
+    // For targeting compatibility
+    getCurrentAttackTiles() {
+        return [];
+    }
+}
