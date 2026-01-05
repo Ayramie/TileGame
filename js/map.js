@@ -75,9 +75,10 @@ export function isoToCart(screenX, screenY) {
 // Get the center of a tile in screen coordinates
 export function tileToScreenCenter(tileX, tileY) {
     if (cameraMode === 'cardinal') {
+        // Callers pass tileX+0.5 for centering, so just multiply directly
         return {
-            x: tileX * CARDINAL_TILE_SIZE + CARDINAL_OFFSET_X + CARDINAL_TILE_SIZE / 2,
-            y: tileY * CARDINAL_TILE_SIZE + CARDINAL_OFFSET_Y + CARDINAL_TILE_SIZE / 2
+            x: tileX * CARDINAL_TILE_SIZE + CARDINAL_OFFSET_X,
+            y: tileY * CARDINAL_TILE_SIZE + CARDINAL_OFFSET_Y
         };
     }
     const iso = cartToIso(tileX, tileY);
