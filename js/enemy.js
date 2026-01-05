@@ -726,7 +726,7 @@ export class Add {
         this.height = 1;
         this.smoothX = tileX;
         this.smoothY = tileY;
-        this.smoothSpeed = 8; // Fast to match tile position
+        this.smoothSpeed = 4; // Smooth visual movement
         this.health = 200;
         this.maxHealth = 200;
         this.isAlive = true;
@@ -1037,7 +1037,7 @@ export class GreaterSlime {
         this.height = 1;
         this.smoothX = tileX;
         this.smoothY = tileY;
-        this.smoothSpeed = 6;
+        this.smoothSpeed = 3; // Smooth visual movement
         this.health = 240;
         this.maxHealth = 240;
         this.isAlive = true;
