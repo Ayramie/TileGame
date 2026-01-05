@@ -697,8 +697,8 @@ export class Add {
         this.smoothX = tileX;
         this.smoothY = tileY;
         this.smoothSpeed = 8; // Fast to match tile position
-        this.health = 400;
-        this.maxHealth = 400;
+        this.health = 200;
+        this.maxHealth = 200;
         this.isAlive = true;
         this.hitFlashTimer = 0;
         this.hitFlashDuration = 0.1;
@@ -711,7 +711,7 @@ export class Add {
         // Attack - simple auto-attack
         this.attackCooldown = 0;
         this.attackCooldownMax = 3.0; // 3 second cooldown
-        this.attackDamage = 1; // Low for testing
+        this.attackDamage = 2;
 
         // Aggro
         this.aggroRange = 3; // Only chase player within this range
