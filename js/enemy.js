@@ -744,8 +744,8 @@ export class Add {
             return;
         }
 
-        // Check if in melee range to attack (adjacent tile)
-        const meleeRange = Math.abs(dx) + Math.abs(dy);
+        // Check if in melee range to attack (adjacent tile, including diagonals)
+        const meleeRange = Math.max(Math.abs(dx), Math.abs(dy));
         if (meleeRange <= 1) {
             // In range - attack if off cooldown, but don't move
             if (this.attackCooldown <= 0 && player.isAlive) {
