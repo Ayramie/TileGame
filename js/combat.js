@@ -188,6 +188,10 @@ export class CombatSystem {
                 if (tile.x === player.tileX && tile.y === player.tileY) {
                     player.takeDamage(enemy.currentAttackDamage);
                     this.addPlayerDamageNumber(enemy.currentAttackDamage);
+                    // Apply stun if shockwave attack
+                    if (enemy.currentAttack === 'SHOCKWAVE' && enemy.currentAttackStun > 0) {
+                        player.applyStun(enemy.currentAttackStun);
+                    }
                     break;
                 }
             }

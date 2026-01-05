@@ -20,11 +20,12 @@ const AttackType = {
     },
     SHOCKWAVE: {
         name: 'Shockwave',
-        damage: 25,
+        damage: 20,
         telegraphDuration: 1.0,
         executeDuration: 0.3,
         cooldown: 5.0,
-        range: 3
+        range: 3,
+        stunDuration: 1.0
     },
     BOUNCE: {
         name: 'Bounce',
@@ -75,7 +76,7 @@ export class Enemy {
 
         // Tracking for smart attack selection
         this.playerCloseTimer = 0; // How long player has been close
-        this.closeThreshold = 4; // Tiles to count as "close"
+        this.closeThreshold = 3; // Tiles to count as "close" (2 tiles from 2x2 body = 6x6 zone)
         this.shockwaveChargeTime = 3.0; // Time close before shockwave
         this.farThreshold = 5; // Tiles to count as "far" for bounce
         this.currentAttack = null;
@@ -319,6 +320,7 @@ export class Enemy {
         this.attackPhase = 'telegraph';
         this.attackTimer = attack.telegraphDuration;
         this.currentAttackDamage = attack.damage;
+        this.currentAttackStun = attack.stunDuration || 0;
         this.attackCooldowns[attackName] = attack.cooldown;
 
         // Calculate attack tiles based on type

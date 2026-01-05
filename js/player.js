@@ -16,6 +16,7 @@ export class Player {
         this.healthTrail = 100; // Delayed health showing damage taken
         this.healthFlashTimer = 0; // Flash when damaged
         this.isAlive = true;
+        this.stunTimer = 0; // Stun duration remaining
         this.attackDamage = 25;
         this.cleaveDamage = 40;
         this.attackCooldown = 0;
@@ -453,6 +454,9 @@ export class Player {
         if (this.healthPotionCooldown > 0) {
             this.healthPotionCooldown -= deltaTime;
         }
+        if (this.stunTimer > 0) {
+            this.stunTimer -= deltaTime;
+        }
 
         // Health bar smoothing
         if (this.healthFlashTimer > 0) {
@@ -657,6 +661,13 @@ export class Player {
         } else if (this.targetEnemy && !this.targetEnemy.isAlive) {
             // Target died, clear it
             this.targetEnemy = null;
+        }
+
+        // Skip movement while stunned
+        if (this.stunTimer > 0) {
+            this.tileX = Math.round(this.x);
+            this.tileY = Math.round(this.y);
+            return;
         }
 
         const dx = this.targetTileX - this.x;
@@ -1444,5 +1455,17 @@ export class Player {
             this.health = 0;
             this.isAlive = false;
         }
+    }
+
+    applyStun(duration) {
+        this.stunTimer = Math.max(this.stunTimer, duration);
+        // Clear movement when stunned
+        this.path = [];
+        this.targetTileX = this.tileX;
+        this.targetTileY = this.tileY;
+    }
+
+    isStunned() {
+        return this.stunTimer > 0;
     }
 }
