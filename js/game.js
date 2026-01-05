@@ -609,11 +609,21 @@ export class Game {
             }
         }
 
-        // Update portal dash system (replaces lasers in phase 2)
+        // Update portal dash system
         if (this.portalDashSystem.isActive()) {
             this.portalDashSystem.update(scaledDelta, this.player, (tileX, tileY, damage) => {
                 this.combat.addPlayerDamageNumber(damage);
                 this.screenShake.add(0.4); // Big shake for boss dash hit
+                this.sound.playHurt();
+            });
+        }
+
+        // Update laser system (phase 2, when portal dash not active)
+        const bossInPhase2 = this.enemies.some(e => e.phase === 2);
+        if (bossInPhase2 && !this.portalDashSystem.isActive()) {
+            this.laserSystem.update(scaledDelta, this.player, (tileX, tileY, damage) => {
+                this.combat.addPlayerDamageNumber(damage);
+                this.screenShake.add(0.3);
                 this.sound.playHurt();
             });
         }
@@ -766,6 +776,9 @@ export class Game {
 
         // Draw portal dash telegraph (before entities)
         this.renderer.drawPortalDash(this.portalDashSystem);
+
+        // Draw laser hazards (phase 2)
+        this.renderer.drawLasers(this.laserSystem);
 
         // Draw enemy telegraphs (before entities so they appear under)
         for (const enemy of this.enemies) {

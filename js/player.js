@@ -41,7 +41,7 @@ export class Player {
         this.bladeStormActive = false;
         this.bladeStormDamage = 15;
         this.bladeStormRadius = 1.5; // tiles around player
-        this.bladeStormTickRate = 0.3; // damage tick interval
+        this.bladeStormTickRate = 0.35; // damage tick interval
         this.bladeStormTickTimer = 0;
         this.bladeStormCooldown = 0;
         this.bladeStormCooldownMax = 6;
