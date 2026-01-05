@@ -111,6 +111,7 @@ export class Player {
         // Cleave aiming (hold Q to aim, release to fire)
         this.cleaveAiming = false;
         this.cleaveAimTiles = [];
+        this.cleaveAimDir = { x: 1, y: 0 }; // Saved direction for cleave (independent of facingTileDir)
 
         // Leap Slam ability (R)
         this.leapSlamCooldown = 0;
@@ -340,10 +341,14 @@ export class Player {
         const dx = targetTile.x - this.tileX;
         const dy = targetTile.y - this.tileY;
 
+        // Save cleave-specific direction (independent of auto-attack facing)
+        this.cleaveAimDir = this.calculateTileDir(dx, dy, screenX, screenY);
+
+        // Also update facing for visual feedback
         this.updateFacingDirection(dx, dy, screenX, screenY);
 
         // Update aim tiles for telegraph display
-        this.cleaveAimTiles = this.getCleaveTiles();
+        this.cleaveAimTiles = this.getCleaveTilesForDir(this.cleaveAimDir);
     }
 
     releaseCleave() {
@@ -390,31 +395,41 @@ export class Player {
         return true;
     }
 
-    updateFacingDirection(tileDx, tileDy, screenX, screenY) {
+    calculateTileDir(tileDx, tileDy, screenX, screenY) {
         // Use screen-space direction for more intuitive aiming
         const myScreenPos = tileToScreenCenter(this.tileX, this.tileY);
         const sdx = screenX - myScreenPos.x;
         const sdy = screenY - myScreenPos.y;
 
         if (sdx !== 0 || sdy !== 0) {
-            this.facingAngle = Math.atan2(sdy, sdx);
-
-            // Map screen angle to 8 tile directions
-            // Screen coords: right=0, down=PI/2, left=PI, up=-PI/2
-            const angle = this.facingAngle;
+            const angle = Math.atan2(sdy, sdx);
             const segment = Math.round(angle / (Math.PI / 4));
 
             // Map screen direction to tile direction (accounting for isometric rotation)
             switch (segment) {
-                case 0: this.facingTileDir = { x: 1, y: -1 }; break;     // Screen Right → tile diagonal
-                case 1: this.facingTileDir = { x: 1, y: 0 }; break;      // Screen Down-Right → tile right
-                case 2: this.facingTileDir = { x: 1, y: 1 }; break;      // Screen Down → tile diagonal
-                case 3: this.facingTileDir = { x: 0, y: 1 }; break;      // Screen Down-Left → tile down
-                case 4: case -4: this.facingTileDir = { x: -1, y: 1 }; break; // Screen Left → tile diagonal
-                case -3: this.facingTileDir = { x: -1, y: 0 }; break;    // Screen Up-Left → tile left
-                case -2: this.facingTileDir = { x: -1, y: -1 }; break;   // Screen Up → tile diagonal
-                case -1: this.facingTileDir = { x: 0, y: -1 }; break;    // Screen Up-Right → tile up
+                case 0: return { x: 1, y: -1 };     // Screen Right → tile diagonal
+                case 1: return { x: 1, y: 0 };      // Screen Down-Right → tile right
+                case 2: return { x: 1, y: 1 };      // Screen Down → tile diagonal
+                case 3: return { x: 0, y: 1 };      // Screen Down-Left → tile down
+                case 4: case -4: return { x: -1, y: 1 }; // Screen Left → tile diagonal
+                case -3: return { x: -1, y: 0 };    // Screen Up-Left → tile left
+                case -2: return { x: -1, y: -1 };   // Screen Up → tile diagonal
+                case -1: return { x: 0, y: -1 };    // Screen Up-Right → tile up
             }
+        }
+        return { x: 1, y: 0 }; // Default
+    }
+
+    updateFacingDirection(tileDx, tileDy, screenX, screenY) {
+        const dir = this.calculateTileDir(tileDx, tileDy, screenX, screenY);
+        this.facingTileDir = dir;
+
+        // Also update facing angle for visuals
+        const myScreenPos = tileToScreenCenter(this.tileX, this.tileY);
+        const sdx = screenX - myScreenPos.x;
+        const sdy = screenY - myScreenPos.y;
+        if (sdx !== 0 || sdy !== 0) {
+            this.facingAngle = Math.atan2(sdy, sdx);
         }
     }
 
@@ -781,9 +796,15 @@ export class Player {
     }
 
     getCleaveTiles() {
+        // Use saved cleave direction if cleaving, otherwise use facing direction
+        const dir = this.isCleaving ? this.cleaveAimDir : this.facingTileDir;
+        return this.getCleaveTilesForDir(dir);
+    }
+
+    getCleaveTilesForDir(dir) {
         const tiles = [];
-        const dirX = this.facingTileDir.x;
-        const dirY = this.facingTileDir.y;
+        const dirX = dir.x;
+        const dirY = dir.y;
         const isDiagonal = dirX !== 0 && dirY !== 0;
 
         if (isDiagonal) {

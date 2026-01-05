@@ -1233,15 +1233,8 @@ export class Renderer {
 
         if (player.isAttacking && player.attackTimer > 0) {
             const alpha = player.attackTimer / player.attackDuration;
-            const tiles = player.getAttackTiles();
 
-            for (const tile of tiles) {
-                const fillColor = `rgba(255, 255, 255, ${alpha * 0.4})`;
-                const strokeColor = `rgba(255, 255, 255, ${alpha})`;
-                this.drawIsometricTile(tile.x, tile.y, fillColor, strokeColor);
-            }
-
-            // Sword swing arc - use smooth position
+            // Sword swing arc only (no tile indicator - damage goes directly to target)
             const arcPos = tileToScreenCenter(player.x, player.y);
             ctx.save();
             ctx.translate(arcPos.x, arcPos.y - 10);
