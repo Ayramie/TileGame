@@ -616,10 +616,7 @@ export class Player {
                     this.attackHitPending = false; // Already dealt damage
                     this.movementLockout = this.attackMovementLockout;
                 }
-                // Stop moving when in range
-                this.targetTileX = this.tileX;
-                this.targetTileY = this.tileY;
-                this.path = [];
+                // Player can still move freely while in range
             }
             // No auto-move to enemy - player must manually move into range
         } else if (this.targetEnemy && !this.targetEnemy.isAlive) {
