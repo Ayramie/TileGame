@@ -179,7 +179,9 @@ export class Game {
             // Left click to move (clears target)
             if (this.input.consumeLeftClick()) {
                 this.player.clearTarget();
-                this.player.setMoveTarget(mouse.x, mouse.y, this.gameMap, this.enemies);
+                // Pass both enemies and adds for collision detection
+                const allBlockers = [...this.enemies, ...this.adds];
+                this.player.setMoveTarget(mouse.x, mouse.y, this.gameMap, allBlockers);
             }
 
             // Right click to attack or target enemy
@@ -280,7 +282,8 @@ export class Game {
             }
 
             // Update player
-            this.player.update(deltaTime, this.gameMap, this.enemies);
+            const allBlockers = [...this.enemies, ...this.adds];
+            this.player.update(deltaTime, this.gameMap, allBlockers);
 
             // Check for pending damage numbers from auto-attacks
             if (this.player.pendingDamageNumber) {
@@ -310,9 +313,9 @@ export class Game {
             }
         }
 
-        // Update adds
+        // Update adds (pass all adds for collision checking)
         for (const add of this.adds) {
-            add.update(deltaTime, this.player, this.gameMap);
+            add.update(deltaTime, this.player, this.gameMap, this.adds);
         }
 
         // Process combat (include adds and pillars as enemies)

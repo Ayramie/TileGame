@@ -720,7 +720,7 @@ export class Add {
         this.attackHitPending = false;
     }
 
-    update(deltaTime, player, gameMap) {
+    update(deltaTime, player, gameMap, allAdds = []) {
         if (!this.isAlive) return;
 
         if (this.hitFlashTimer > 0) {
@@ -749,7 +749,7 @@ export class Add {
         }
 
         // Movement towards player
-        this.updateMovement(deltaTime, player, gameMap);
+        this.updateMovement(deltaTime, player, gameMap, allAdds);
         this.updateSmoothPosition(deltaTime);
     }
 
@@ -773,7 +773,7 @@ export class Add {
         }
     }
 
-    updateMovement(deltaTime, player, gameMap) {
+    updateMovement(deltaTime, player, gameMap, allAdds = []) {
         this.moveTimer -= deltaTime;
         if (this.moveTimer > 0) return;
 
@@ -795,12 +795,28 @@ export class Add {
         const newTileX = this.tileX + moveX;
         const newTileY = this.tileY + moveY;
 
-        if (newTileX >= 0 && newTileX < MAP_WIDTH &&
-            newTileY >= 0 && newTileY < MAP_HEIGHT &&
-            gameMap.isWalkable(newTileX, newTileY)) {
-            this.tileX = newTileX;
-            this.tileY = newTileY;
+        // Check if tile is valid
+        if (newTileX < 0 || newTileX >= MAP_WIDTH ||
+            newTileY < 0 || newTileY >= MAP_HEIGHT ||
+            !gameMap.isWalkable(newTileX, newTileY)) {
+            return;
         }
+
+        // Check if player is on the target tile
+        if (player.tileX === newTileX && player.tileY === newTileY) {
+            return;
+        }
+
+        // Check if another add is on the target tile
+        for (const other of allAdds) {
+            if (other === this || !other.isAlive) continue;
+            if (other.tileX === newTileX && other.tileY === newTileY) {
+                return;
+            }
+        }
+
+        this.tileX = newTileX;
+        this.tileY = newTileY;
     }
 
     startAttack(player) {
