@@ -696,7 +696,7 @@ export class Add {
         this.height = 1;
         this.smoothX = tileX;
         this.smoothY = tileY;
-        this.smoothSpeed = 8;
+        this.smoothSpeed = 4; // Slower for smoother interpolation
         this.health = 40;
         this.maxHealth = 40;
         this.isAlive = true;
@@ -706,7 +706,7 @@ export class Add {
         // Movement
         this.moveSpeed = 3.5;
         this.moveTimer = 0;
-        this.moveCooldown = 0.25;
+        this.moveCooldown = 0.35; // Slightly slower movement for smoother look
 
         // Attack
         this.attackCooldown = 0;
