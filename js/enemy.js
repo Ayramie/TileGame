@@ -500,27 +500,33 @@ export class Enemy {
                                             this.playerRef.tileY <= landPos.y + this.height;
 
                         if (playerInZone) {
-                            // Deal full bounce damage
-                            this.playerRef.takeDamage(this.currentAttackDamage);
                             this.bounceHits[this.currentBounce] = true;
-                            // Signal for damage number display
-                            this.bounceDamageDealt = this.currentAttackDamage;
 
-                            // Push player away from boss center
-                            const pushDirX = this.playerRef.tileX - (landPos.x + this.width / 2);
-                            const pushDirY = this.playerRef.tileY - (landPos.y + this.height / 2);
-                            const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
-                            if (pushLen > 0) {
-                                const pushX = Math.round(pushDirX / pushLen * 2);
-                                const pushY = Math.round(pushDirY / pushLen * 2);
-                                const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
-                                const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
-                                this.playerRef.tileX = newX;
-                                this.playerRef.tileY = newY;
-                                this.playerRef.x = newX;
-                                this.playerRef.y = newY;
-                                this.playerRef.targetTileX = newX;
-                                this.playerRef.targetTileY = newY;
+                            // Check if player parries the bounce attack
+                            if (this.playerRef.tryParry && this.playerRef.tryParry(this)) {
+                                // Parry successful - no damage or knockback
+                            } else {
+                                // Deal full bounce damage
+                                this.playerRef.takeDamage(this.currentAttackDamage);
+                                // Signal for damage number display
+                                this.bounceDamageDealt = this.currentAttackDamage;
+
+                                // Push player away from boss center
+                                const pushDirX = this.playerRef.tileX - (landPos.x + this.width / 2);
+                                const pushDirY = this.playerRef.tileY - (landPos.y + this.height / 2);
+                                const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
+                                if (pushLen > 0) {
+                                    const pushX = Math.round(pushDirX / pushLen * 2);
+                                    const pushY = Math.round(pushDirY / pushLen * 2);
+                                    const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
+                                    const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
+                                    this.playerRef.tileX = newX;
+                                    this.playerRef.tileY = newY;
+                                    this.playerRef.x = newX;
+                                    this.playerRef.y = newY;
+                                    this.playerRef.targetTileX = newX;
+                                    this.playerRef.targetTileY = newY;
+                                }
                             }
                         }
                     }
@@ -589,26 +595,32 @@ export class Enemy {
                                             this.playerRef.tileY <= finalPos.y + this.height;
 
                         if (playerInZone) {
-                            // Deal full bounce damage
-                            this.playerRef.takeDamage(this.currentAttackDamage);
                             this.bounceHits[2] = true;
-                            this.bounceDamageDealt = this.currentAttackDamage;
 
-                            // Push player away
-                            const pushDirX = this.playerRef.tileX - (finalPos.x + this.width / 2);
-                            const pushDirY = this.playerRef.tileY - (finalPos.y + this.height / 2);
-                            const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
-                            if (pushLen > 0) {
-                                const pushX = Math.round(pushDirX / pushLen * 2);
-                                const pushY = Math.round(pushDirY / pushLen * 2);
-                                const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
-                                const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
-                                this.playerRef.tileX = newX;
-                                this.playerRef.tileY = newY;
-                                this.playerRef.x = newX;
-                                this.playerRef.y = newY;
-                                this.playerRef.targetTileX = newX;
-                                this.playerRef.targetTileY = newY;
+                            // Check if player parries the bounce attack
+                            if (this.playerRef.tryParry && this.playerRef.tryParry(this)) {
+                                // Parry successful - no damage or knockback
+                            } else {
+                                // Deal full bounce damage
+                                this.playerRef.takeDamage(this.currentAttackDamage);
+                                this.bounceDamageDealt = this.currentAttackDamage;
+
+                                // Push player away
+                                const pushDirX = this.playerRef.tileX - (finalPos.x + this.width / 2);
+                                const pushDirY = this.playerRef.tileY - (finalPos.y + this.height / 2);
+                                const pushLen = Math.sqrt(pushDirX * pushDirX + pushDirY * pushDirY);
+                                if (pushLen > 0) {
+                                    const pushX = Math.round(pushDirX / pushLen * 2);
+                                    const pushY = Math.round(pushDirY / pushLen * 2);
+                                    const newX = Math.max(0, Math.min(MAP_WIDTH - 1, this.playerRef.tileX + pushX));
+                                    const newY = Math.max(0, Math.min(MAP_HEIGHT - 1, this.playerRef.tileY + pushY));
+                                    this.playerRef.tileX = newX;
+                                    this.playerRef.tileY = newY;
+                                    this.playerRef.x = newX;
+                                    this.playerRef.y = newY;
+                                    this.playerRef.targetTileX = newX;
+                                    this.playerRef.targetTileY = newY;
+                                }
                             }
                         }
                     }
