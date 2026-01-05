@@ -225,8 +225,8 @@ export class Game {
     }
 
     update(deltaTime) {
-        // Tab key to toggle game guide overlay
-        if (this.input.wasKeyJustPressed('tab')) {
+        // Escape key to toggle game guide overlay
+        if (this.input.wasKeyJustPressed('escape')) {
             this.toggleMenuOverlay();
         }
 
@@ -238,6 +238,11 @@ export class Game {
         // If menu overlay is open, don't process game input
         if (this.menuOverlayOpen) {
             return;
+        }
+
+        // Tab key to target closest enemy (only during gameplay)
+        if (this.input.wasKeyJustPressed('tab') && this.gameState === 'playing') {
+            this.targetClosestEnemy();
         }
 
         // Handle menu state
@@ -412,11 +417,6 @@ export class Game {
                     // Clear target when clicking empty space
                     this.player.clearTarget();
                 }
-            }
-
-            // Escape to clear target
-            if (this.input.wasKeyJustPressed('escape')) {
-                this.player.clearTarget();
             }
 
             // Q for cleave - hold to aim at cursor, release to fire
@@ -1179,6 +1179,53 @@ export class Game {
                 variant: Math.floor(Math.random() * 3), // Visual variation
                 scale: 0.8 + Math.random() * 0.4 // Size variation
             });
+        }
+    }
+
+    targetClosestEnemy() {
+        // Collect all alive enemies
+        const allEnemies = [];
+        for (const enemy of this.enemies) {
+            if (enemy.isAlive) allEnemies.push(enemy);
+        }
+        for (const add of this.adds) {
+            if (add.isAlive) allEnemies.push(add);
+        }
+        for (const greater of this.greaterSlimes) {
+            if (greater.isAlive) allEnemies.push(greater);
+        }
+        for (const cocoon of this.cocoons) {
+            if (cocoon.isAlive) allEnemies.push(cocoon);
+        }
+
+        if (allEnemies.length === 0) return;
+
+        // Find closest enemy to player
+        const px = this.player.tileX;
+        const py = this.player.tileY;
+
+        let closest = null;
+        let closestDist = Infinity;
+
+        for (const enemy of allEnemies) {
+            const ex = enemy.tileX + (enemy.width || 1) / 2;
+            const ey = enemy.tileY + (enemy.height || 1) / 2;
+            const dist = Math.sqrt((ex - px) ** 2 + (ey - py) ** 2);
+
+            // If we already have a target, find the next closest (tab cycling)
+            if (this.player.targetEnemy === enemy) continue;
+
+            if (dist < closestDist) {
+                closestDist = dist;
+                closest = enemy;
+            }
+        }
+
+        if (closest) {
+            this.player.setTargetEnemy(closest);
+        } else if (allEnemies.length === 1) {
+            // Only one enemy and it's already targeted, keep it
+            this.player.setTargetEnemy(allEnemies[0]);
         }
     }
 
