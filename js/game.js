@@ -15,40 +15,96 @@ export class Game {
         this.canvas.width = 1024;
         this.canvas.height = 768;
 
+        this.input = new InputHandler(canvas);
+        this.renderer = new Renderer(canvas, this.ctx);
+
+        // Game state
+        this.gameState = 'menu'; // 'menu', 'playing'
+        this.gameMode = null; // 'boss', 'puzzle'
+
+        // Menu options
+        this.menuOptions = [
+            { id: 'boss', label: 'Slime Boss' },
+            { id: 'puzzle', label: 'Pillar Puzzle' }
+        ];
+        this.hoveredOption = null;
+
+        this.lastTime = 0;
+        this.running = false;
+    }
+
+    initGame(mode) {
+        this.gameMode = mode;
+        this.gameState = 'playing';
+
         this.gameMap = new GameMap();
         this.player = new Player(5, 5);
-        this.enemies = []; // Boss spawns after puzzle
-        this.adds = []; // Spawned minions
-        this.input = new InputHandler(canvas);
+        this.enemies = [];
+        this.adds = [];
         this.combat = new CombatSystem();
-        this.renderer = new Renderer(canvas, this.ctx);
         this.laserSystem = new LaserHazardSystem();
         this.groundHazards = new GroundHazardSystem();
-
-        // Puzzle state
-        this.puzzlePhase = 'waiting'; // 'waiting', 'flashing', 'active', 'complete'
-        this.puzzleColors = ['red', 'blue', 'green', 'yellow'];
-        this.correctColor = null;
-        this.puzzleFlashTimer = 0;
-        this.puzzleFlashCount = 0;
-        this.puzzleFlashMaxCount = 6; // Number of flashes before showing color
-        this.puzzleFlashDuration = 0.3; // Duration of each flash
 
         // Center tile position
         this.centerTileX = Math.floor(MAP_WIDTH / 2);
         this.centerTileY = Math.floor(MAP_HEIGHT / 2);
 
-        // Create pillars in 4 corners of center area
-        const pillarOffset = 6;
-        this.pillars = [
-            new Pillar(this.centerTileX - pillarOffset, this.centerTileY - pillarOffset, 'red'),
-            new Pillar(this.centerTileX + pillarOffset, this.centerTileY - pillarOffset, 'blue'),
-            new Pillar(this.centerTileX - pillarOffset, this.centerTileY + pillarOffset, 'green'),
-            new Pillar(this.centerTileX + pillarOffset, this.centerTileY + pillarOffset, 'yellow')
-        ];
+        if (mode === 'boss') {
+            // Start with boss directly
+            this.enemies.push(new Enemy(this.centerTileX - 1, this.centerTileY - 1));
+            this.pillars = [];
+            this.puzzlePhase = 'complete';
+        } else if (mode === 'puzzle') {
+            // Start with puzzle
+            this.puzzlePhase = 'waiting';
+            this.puzzleColors = ['red', 'blue', 'green', 'yellow'];
+            this.correctColor = null;
+            this.puzzleFlashTimer = 0;
+            this.puzzleFlashCount = 0;
+            this.puzzleFlashMaxCount = 6;
+            this.puzzleFlashDuration = 0.3;
 
-        this.lastTime = 0;
-        this.running = false;
+            // Create pillars
+            const pillarOffset = 6;
+            this.pillars = [
+                new Pillar(this.centerTileX - pillarOffset, this.centerTileY - pillarOffset, 'red'),
+                new Pillar(this.centerTileX + pillarOffset, this.centerTileY - pillarOffset, 'blue'),
+                new Pillar(this.centerTileX - pillarOffset, this.centerTileY + pillarOffset, 'green'),
+                new Pillar(this.centerTileX + pillarOffset, this.centerTileY + pillarOffset, 'yellow')
+            ];
+        }
+    }
+
+    returnToMenu() {
+        this.gameState = 'menu';
+        this.gameMode = null;
+        this.hoveredOption = null;
+    }
+
+    updateMenu() {
+        const mouse = this.input.getMousePosition();
+
+        // Check hover state for menu options
+        const centerX = this.canvas.width / 2;
+        const startY = 300;
+        const optionHeight = 60;
+        const optionWidth = 250;
+
+        this.hoveredOption = null;
+        for (let i = 0; i < this.menuOptions.length; i++) {
+            const optionY = startY + i * (optionHeight + 20);
+            if (mouse.x >= centerX - optionWidth / 2 &&
+                mouse.x <= centerX + optionWidth / 2 &&
+                mouse.y >= optionY &&
+                mouse.y <= optionY + optionHeight) {
+                this.hoveredOption = this.menuOptions[i].id;
+            }
+        }
+
+        // Handle click
+        if (this.input.consumeLeftClick() && this.hoveredOption) {
+            this.initGame(this.hoveredOption);
+        }
     }
 
     start() {
@@ -72,6 +128,12 @@ export class Game {
     }
 
     update(deltaTime) {
+        // Handle menu state
+        if (this.gameState === 'menu') {
+            this.updateMenu();
+            return;
+        }
+
         // Update renderer animation time (includes player sprite animation)
         this.renderer.update(deltaTime, this.player);
 
@@ -338,8 +400,15 @@ export class Game {
     }
 
     render() {
-        const zoom = this.input.getZoom();
         this.renderer.clear();
+
+        // Handle menu state
+        if (this.gameState === 'menu') {
+            this.renderer.drawMenu(this.menuOptions, this.hoveredOption);
+            return;
+        }
+
+        const zoom = this.input.getZoom();
 
         // Get player screen position for camera centering (offset by 0.5 to center in tile)
         const playerScreen = tileToScreenCenter(this.player.x + 0.5, this.player.y + 0.5);

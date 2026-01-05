@@ -21,6 +21,64 @@ export class Renderer {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
+    drawMenu(options, hoveredOption) {
+        const ctx = this.ctx;
+        const centerX = this.canvas.width / 2;
+        const startY = 300;
+        const optionHeight = 60;
+        const optionWidth = 250;
+
+        // Title
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 48px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Tile Combat', centerX, 150);
+
+        // Subtitle
+        ctx.font = '20px Arial';
+        ctx.fillStyle = '#888888';
+        ctx.fillText('Select a Game Mode', centerX, 220);
+
+        // Draw options
+        for (let i = 0; i < options.length; i++) {
+            const option = options[i];
+            const optionY = startY + i * (optionHeight + 20);
+            const isHovered = hoveredOption === option.id;
+
+            // Button background
+            ctx.fillStyle = isHovered ? '#3a3a5a' : '#1a1a2e';
+            ctx.strokeStyle = isHovered ? '#6666aa' : '#333355';
+            ctx.lineWidth = 2;
+
+            // Rounded rectangle
+            const radius = 10;
+            ctx.beginPath();
+            ctx.moveTo(centerX - optionWidth / 2 + radius, optionY);
+            ctx.lineTo(centerX + optionWidth / 2 - radius, optionY);
+            ctx.quadraticCurveTo(centerX + optionWidth / 2, optionY, centerX + optionWidth / 2, optionY + radius);
+            ctx.lineTo(centerX + optionWidth / 2, optionY + optionHeight - radius);
+            ctx.quadraticCurveTo(centerX + optionWidth / 2, optionY + optionHeight, centerX + optionWidth / 2 - radius, optionY + optionHeight);
+            ctx.lineTo(centerX - optionWidth / 2 + radius, optionY + optionHeight);
+            ctx.quadraticCurveTo(centerX - optionWidth / 2, optionY + optionHeight, centerX - optionWidth / 2, optionY + optionHeight - radius);
+            ctx.lineTo(centerX - optionWidth / 2, optionY + radius);
+            ctx.quadraticCurveTo(centerX - optionWidth / 2, optionY, centerX - optionWidth / 2 + radius, optionY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Button text
+            ctx.fillStyle = isHovered ? '#ffffff' : '#aaaaaa';
+            ctx.font = isHovered ? 'bold 24px Arial' : '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(option.label, centerX, optionY + optionHeight / 2);
+        }
+
+        ctx.restore();
+    }
+
     // Draw a diamond-shaped isometric tile
     drawIsometricTile(x, y, fillStyle, strokeStyle = null) {
         const ctx = this.ctx;
