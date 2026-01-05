@@ -2,10 +2,10 @@ import { ISO_TILE_WIDTH, ISO_TILE_HEIGHT, TileType, cartToIso, tileToScreenCente
 import { PlayerSprite } from './sprites.js';
 
 // Entity scale constants
-const PLAYER_SCALE = 1.4;
-const SLIME_SCALE = 1.3;
-const GREATER_SLIME_SCALE = 1.4;
-const BOSS_SCALE = 1.8;
+const PLAYER_SCALE = 0.8;
+const SLIME_SCALE = 0.7;
+const GREATER_SLIME_SCALE = 0.85;
+const BOSS_SCALE = 2.5;
 
 export class Renderer {
     constructor(canvas, ctx) {
