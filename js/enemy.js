@@ -25,7 +25,7 @@ const AttackType = {
         executeDuration: 0.3,
         cooldown: 5.0,
         range: 3,
-        stunDuration: 1.0
+        stunDuration: 2.0
     },
     BOUNCE: {
         name: 'Bounce',

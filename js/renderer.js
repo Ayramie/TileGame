@@ -198,6 +198,43 @@ export class Renderer {
         }
         ctx.restore();
 
+        // Stun animation - spinning stars above head
+        if (player.stunTimer > 0) {
+            ctx.save();
+            ctx.translate(screenX, screenY - 45 * PLAYER_SCALE - jumpHeight);
+            const numStars = 3;
+            const starRadius = 12;
+            for (let i = 0; i < numStars; i++) {
+                const angle = this.time * 4 + (i * Math.PI * 2 / numStars);
+                const starX = Math.cos(angle) * starRadius;
+                const starY = Math.sin(angle) * starRadius * 0.4; // Flatten for perspective
+
+                // Draw star
+                ctx.fillStyle = '#ffdd44';
+                ctx.strokeStyle = '#aa8800';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let j = 0; j < 5; j++) {
+                    const starAngle = (j * Math.PI * 2 / 5) - Math.PI / 2;
+                    const outerX = starX + Math.cos(starAngle) * 4;
+                    const outerY = starY + Math.sin(starAngle) * 4;
+                    const innerAngle = starAngle + Math.PI / 5;
+                    const innerX = starX + Math.cos(innerAngle) * 2;
+                    const innerY = starY + Math.sin(innerAngle) * 2;
+                    if (j === 0) {
+                        ctx.moveTo(outerX, outerY);
+                    } else {
+                        ctx.lineTo(outerX, outerY);
+                    }
+                    ctx.lineTo(innerX, innerY);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
         // Leap trail effect while airborne
         if (player.isLeaping && jumpHeight > 20) {
             ctx.save();
