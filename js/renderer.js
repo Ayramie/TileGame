@@ -5,7 +5,7 @@ import { PlayerSprite } from './sprites.js';
 const PLAYER_SCALE = 0.8;
 const SLIME_SCALE = 0.7;
 const GREATER_SLIME_SCALE = 0.85;
-const BOSS_SCALE = 1.2;
+const BOSS_SCALE = 1.0;
 
 export class Renderer {
     constructor(canvas, ctx) {
@@ -564,7 +564,7 @@ export class Renderer {
         // Boss center position - centered on 2x2 tile area
         const pos = tileToScreenCenter(enemy.smoothX + 1, enemy.smoothY + 1);
         const screenX = pos.x;
-        let screenY = pos.y - 20 * scale; // Float above ground
+        let screenY = pos.y - 40 * scale; // Float above ground
 
         // Animation values
         let floatOffset = Math.sin(this.time * 2) * 5 * scale;
